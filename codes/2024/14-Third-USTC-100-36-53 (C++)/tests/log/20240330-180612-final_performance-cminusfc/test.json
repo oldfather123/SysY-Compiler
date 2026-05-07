@@ -1,0 +1,182 @@
+{
+    "01_mm1": {
+        "compile": "success",
+        "run": "success",
+        "time": 7.973285
+    },
+    "01_mm2": {
+        "compile": "success",
+        "run": "success",
+        "time": 7.10009
+    },
+    "01_mm3": {
+        "compile": "success",
+        "run": "success",
+        "time": 5.330737
+    },
+    "03_sort1": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.852782
+    },
+    "03_sort2": {
+        "compile": "success",
+        "run": "success",
+        "time": 20.573903
+    },
+    "03_sort3": {
+        "compile": "success",
+        "run": "success",
+        "time": 4.473299
+    },
+    "04_spmv1": {
+        "compile": "success",
+        "run": "success",
+        "time": 3.532638
+    },
+    "04_spmv2": {
+        "compile": "success",
+        "run": "success",
+        "time": 2.228431
+    },
+    "04_spmv3": {
+        "compile": "success",
+        "run": "success",
+        "time": 2.91285
+    },
+    "fft0": {
+        "compile": "success",
+        "run": "success",
+        "time": 9.224667
+    },
+    "fft1": {
+        "compile": "success",
+        "run": "success",
+        "time": 19.710694
+    },
+    "fft2": {
+        "compile": "success",
+        "run": "success",
+        "time": 19.009778
+    },
+    "gameoflife-gosper": {
+        "compile": "success",
+        "run": "success",
+        "time": 21.129303
+    },
+    "gameoflife-oscillator": {
+        "compile": "success",
+        "run": "success",
+        "time": 18.554983
+    },
+    "gameoflife-p61glidergun": {
+        "compile": "success",
+        "run": "success",
+        "time": 18.829552
+    },
+    "if-combine1": {
+        "compile": "success",
+        "run": "success",
+        "time": 14.28199
+    },
+    "if-combine2": {
+        "compile": "success",
+        "run": "success",
+        "time": 21.428114
+    },
+    "if-combine3": {
+        "compile": "success",
+        "run": "success",
+        "time": 35.705222
+    },
+    "large_loop_array_1": {
+        "compile": "success",
+        "run": "success",
+        "time": 2.3414989999999998
+    },
+    "large_loop_array_2": {
+        "compile": "success",
+        "run": "success",
+        "time": 4.673431
+    },
+    "large_loop_array_3": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.868874
+    },
+    "matmul1": {
+        "compile": "success",
+        "run": "success",
+        "time": 7.784756
+    },
+    "matmul2": {
+        "compile": "success",
+        "run": "success",
+        "time": 7.784712
+    },
+    "matmul3": {
+        "compile": "success",
+        "run": "success",
+        "time": 7.784543
+    },
+    "recursive_call_1": {
+        "compile": "success",
+        "run": "success",
+        "time": 12.263073
+    },
+    "recursive_call_2": {
+        "compile": "success",
+        "run": "success",
+        "time": 3.062751
+    },
+    "recursive_call_3": {
+        "compile": "success",
+        "run": "success",
+        "time": 6.16353
+    },
+    "shuffle0": {
+        "compile": "success",
+        "run": "success",
+        "time": 5.919159
+    },
+    "shuffle1": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.6976
+    },
+    "shuffle2": {
+        "compile": "success",
+        "run": "success",
+        "time": 2.713456
+    },
+    "sl1": {
+        "compile": "success",
+        "run": "success",
+        "time": 8.656362
+    },
+    "sl2": {
+        "compile": "success",
+        "run": "success",
+        "time": 2.679399
+    },
+    "sl3": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.206464
+    },
+    "transpose0": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.7890730000000001
+    },
+    "transpose1": {
+        "compile": "success",
+        "run": "success",
+        "time": 2.823742
+    },
+    "transpose2": {
+        "compile": "success",
+        "run": "success",
+        "time": 3.519909
+    }
+}

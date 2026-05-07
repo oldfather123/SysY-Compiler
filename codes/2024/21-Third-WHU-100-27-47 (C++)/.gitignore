@@ -422,6 +422,3 @@ FodyWeavers.xsd
 CMakeCache.txt
 Makefile
 /CMakeFiles
-*.sy
-*.in
-*.out

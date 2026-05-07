@@ -1,0 +1,182 @@
+{
+    "01_mm1": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.7307649999999999
+    },
+    "01_mm2": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.539134
+    },
+    "01_mm3": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.170045
+    },
+    "03_sort1": {
+        "compile": "success",
+        "run": "success",
+        "time": 0.291875
+    },
+    "03_sort2": {
+        "compile": "success",
+        "run": "success",
+        "time": 3.7433170000000002
+    },
+    "03_sort3": {
+        "compile": "success",
+        "run": "success",
+        "time": 0.804105
+    },
+    "04_spmv1": {
+        "compile": "success",
+        "run": "success",
+        "time": 0.932907
+    },
+    "04_spmv2": {
+        "compile": "success",
+        "run": "success",
+        "time": 0.716879
+    },
+    "04_spmv3": {
+        "compile": "success",
+        "run": "success",
+        "time": 0.648369
+    },
+    "fft0": {
+        "compile": "success",
+        "run": "success",
+        "time": 6.53895
+    },
+    "fft1": {
+        "compile": "success",
+        "run": "success",
+        "time": 14.046729
+    },
+    "fft2": {
+        "compile": "success",
+        "run": "success",
+        "time": 13.536235
+    },
+    "gameoflife-gosper": {
+        "compile": "success",
+        "run": "success",
+        "time": 3.548982
+    },
+    "gameoflife-oscillator": {
+        "compile": "success",
+        "run": "success",
+        "time": 2.814415
+    },
+    "gameoflife-p61glidergun": {
+        "compile": "success",
+        "run": "success",
+        "time": 3.47059
+    },
+    "if-combine1": {
+        "compile": "success",
+        "run": "success",
+        "time": 2.656991
+    },
+    "if-combine2": {
+        "compile": "success",
+        "run": "success",
+        "time": 4.133039
+    },
+    "if-combine3": {
+        "compile": "success",
+        "run": "success",
+        "time": 6.433235
+    },
+    "large_loop_array_1": {
+        "compile": "success",
+        "run": "success",
+        "time": 2.311925
+    },
+    "large_loop_array_2": {
+        "compile": "success",
+        "run": "success",
+        "time": 4.641273
+    },
+    "large_loop_array_3": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.8605070000000001
+    },
+    "matmul1": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.538003
+    },
+    "matmul2": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.544139
+    },
+    "matmul3": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.538602
+    },
+    "recursive_call_1": {
+        "compile": "success",
+        "run": "success",
+        "time": 3.711307
+    },
+    "recursive_call_2": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.059133
+    },
+    "recursive_call_3": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.864358
+    },
+    "shuffle0": {
+        "compile": "success",
+        "run": "success",
+        "time": 4.695701
+    },
+    "shuffle1": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.525371
+    },
+    "shuffle2": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.656916
+    },
+    "sl1": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.774531
+    },
+    "sl2": {
+        "compile": "success",
+        "run": "success",
+        "time": 0.680003
+    },
+    "sl3": {
+        "compile": "success",
+        "run": "success",
+        "time": 0.377397
+    },
+    "transpose0": {
+        "compile": "success",
+        "run": "success",
+        "time": 0.629001
+    },
+    "transpose1": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.142479
+    },
+    "transpose2": {
+        "compile": "success",
+        "run": "success",
+        "time": 1.115571
+    }
+}

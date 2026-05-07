@@ -1,0 +1,28 @@
+int a;
+int b;
+
+int main() {
+    int x = 0;
+    int y = 0;
+
+    // 初始化全局变量
+    a = 10;
+    b = 20;
+
+    // 首次加载 a 和 b
+    x = a;
+    y = b;
+
+    // 冗余加载 a 和 b
+    x = a;
+    y = b;
+
+    // 再次冗余加载 a 和 b
+    x = a;
+    y = b;
+
+    // 使用结果
+    int result = x + y;
+
+    return result;
+}

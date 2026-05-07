@@ -1,0 +1,107 @@
+void assert(int cond) {
+    if (cond) {
+        putint(1);
+        putch(10);
+    } else {
+        putint(0);
+        putch(10);
+    }
+}
+
+int main() {
+    assert(1 < 2);
+    assert(2 > 1);
+    assert(1 == 1);
+    assert(1 != 2);
+    assert(1 >= 1);
+    assert(1 <= 1);
+    assert(1. < 2.);
+    assert(2. > 1.);
+    assert(1. == 1.);
+    assert(1. != 2.);
+    assert(1. <= 1.);
+    assert(1. >= 1.);
+    assert(1 < 2.0);
+    assert(1.0 < 2);
+    assert(2.0 > 1);
+    assert(2 > 1.0);
+    assert(1.0 == 1);
+    assert(1 == 1.0);
+    assert(1.0 != 2);
+    assert(1 != 2.0);
+    assert(1.0 <= 1);
+    assert(1 <= 1.0);
+    assert(1.0 >= 1);
+    assert(1 >= 1.0);
+    putch(10);
+    
+    assert(1 > 2);
+    assert(2 < 1);
+    assert(1 != 1);
+    assert(1 == 2);
+    assert(1 < 1);
+    assert(1 > 1);
+    assert(1. >= 2.);
+    assert(2. <= 1.);
+    assert(1. != 1.);
+    assert(1. == 2.);
+    assert(1. > 1.);
+    assert(1. < 1.);
+    assert(1 >= 2.0);
+    assert(1.0 >= 2);
+    assert(2.0 <= 1);
+    assert(2 <= 1.0);
+    assert(1.0 != 1);
+    assert(1 != 1.0);
+    assert(1.0 == 2);
+    assert(1 == 2.0);
+    assert(1.0 > 1);
+    assert(1 > 1.0);
+    assert(1.0 < 1);
+    assert(1 < 1.0);
+    putch(10);
+
+    assert(1 <  1);
+    assert(1 <= 1);
+    assert(1 == 1);
+    assert(1 != 1);
+    assert(1 >  1);
+    assert(1 >= 1);
+
+    assert(2 <  1);
+    assert(2 <= 1);
+    assert(2 == 1);
+    assert(2 != 1);
+    assert(2 >  1);
+    assert(2 >= 1);
+
+    assert(1 <  2);
+    assert(1 <= 2);
+    assert(1 == 2);
+    assert(1 != 2);
+    assert(1 >  2);
+    assert(1 >= 2);
+
+    assert(1. <  1.);
+    assert(1. <= 1.);
+    assert(1. == 1.);
+    assert(1. != 1.);
+    assert(1. >  1.);
+    assert(1. >= 1.);
+
+    assert(2. <  1.);
+    assert(2. <= 1.);
+    assert(2. == 1.);
+    assert(2. != 1.);
+    assert(2. >  1.);
+    assert(2. >= 1.);
+
+    assert(1. <  2.);
+    assert(1. <= 2.);
+    assert(1. == 2.);
+    assert(1. != 2.);
+    assert(1. >  2.);
+    assert(1. >= 2.);
+
+    return 0;
+}

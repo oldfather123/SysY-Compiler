@@ -9,7 +9,6 @@ tests/output
 tests/testdata
 output/
 *log.txt
-/tests/log/*
 !/tests/log/compare.ipynb
 tests/test_stu
 .clangd

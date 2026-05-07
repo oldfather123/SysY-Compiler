@@ -1,0 +1,112 @@
+// #include <iostream>
+float many_params(
+    float a, float b, float c, float d, float e, float f, float g, float h, float i, float j,
+    float k, float l, float m, float n, float o, float p, float q, float r, float s, float t,
+    float u, float v, float w, float x, float y, float z,
+    float a_arr[], float b_arr[], float c_arr[], float d_arr[], float e_arr[], float f_arr[], float g_arr[], float h_arr[], float i_arr[], float j_arr[],
+    float k_arr[], float l_arr[], float m_arr[], float n_arr[], float o_arr[], float p_arr[], float q_arr[], float r_arr[], float s_arr[], float t_arr[],
+    float u_arr[], float v_arr[], float w_arr[], float x_arr[], float y_arr[], float z_arr[],
+    int a_int[], int b_int[], int c_int[], int d_int[], int e_int[], int f_int[], int g_int[], int h_int[], int i_int[], int j_int[],
+    int k_int[], int l_int[], int m_int[], int n_int[], int o_int[], int p_int[], int q_int[], int r_int[], int s_int[], int t_int[],
+    int u_int[], int v_int[], int w_int[], int x_int[], int y_int[], int z_int[]) {
+    float result = 0.0;
+    int idx = 0;
+
+    // 累加标量 float 参数
+    result = result + a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r + s + t + u + v + w + x + y + z;
+
+    // 展开数组元素累加操作
+    result = result + a_arr[idx] + b_arr[idx] + c_arr[idx] + d_arr[idx] + e_arr[idx] + f_arr[idx] + g_arr[idx] + h_arr[idx] + i_arr[idx] + j_arr[idx];
+    result = result + k_arr[idx] + l_arr[idx] + m_arr[idx] + n_arr[idx] + o_arr[idx] + p_arr[idx] + q_arr[idx] + r_arr[idx] + s_arr[idx] + t_arr[idx];
+    result = result + u_arr[idx] + v_arr[idx] + w_arr[idx] + x_arr[idx] + y_arr[idx] + z_arr[idx];
+
+    // ... 根据需要继续展开
+
+    // 展开整型数组的累加操作
+    result = result + a_int[idx] + b_int[idx] + c_int[idx] + d_int[idx] + e_int[idx] + f_int[idx] + g_int[idx] + h_int[idx] + i_int[idx] + j_int[idx];
+    result = result + k_int[idx] + l_int[idx] + m_int[idx] + n_int[idx] + o_int[idx] + p_int[idx] + q_int[idx] + r_int[idx] + s_int[idx] + t_int[idx];
+    result = result + u_int[idx] + v_int[idx] + w_int[idx] + x_int[idx] + y_int[idx] + z_int[idx];
+
+    // ... 根据需要继续展开
+
+    return result;
+}
+
+int main() {
+    float a = 1.0, b = 2.0, c = 3.0, d = 4.0, e = 5.0, f = 6.0, g = 7.0, h = 8.0, i = 9.0, j = 10.0;
+    float k = 11.0, l = 12.0, m = 13.0, n = 14.0, o = 15.0, p = 16.0, q = 17.0, r = 18.0, s = 19.0, t = 20.0;
+    float u = 21.0, v = 22.0, w = 23.0, x = 24.0, y = 25.0, z = 26.0;
+
+    float a_arr[2] = {1.1, 2.2};
+    float b_arr[2] = {1.1, 2.2};
+    float c_arr[2] = {1.1, 2.2};
+    float d_arr[2] = {1.1, 2.2};
+    float e_arr[2] = {1.1, 2.2};
+    float f_arr[2] = {1.1, 2.2};
+    float g_arr[2] = {1.1, 2.2};
+    float h_arr[2] = {1.1, 2.2};
+    float i_arr[2] = {1.1, 2.2};
+    float j_arr[2] = {1.1, 2.2};
+    float k_arr[2] = {1.1, 2.2};
+    float l_arr[2] = {1.1, 2.2};
+    float m_arr[2] = {1.1, 2.2};
+    float n_arr[2] = {1.1, 2.2};
+    float o_arr[2] = {1.1, 2.2};
+    float p_arr[2] = {1.1, 2.2};
+    float q_arr[2] = {1.1, 2.2};
+    float r_arr[2] = {1.1, 2.2};
+    float s_arr[2] = {1.1, 2.2};
+    float t_arr[2] = {1.1, 2.2};
+    float u_arr[2] = {1.1, 2.2};
+    float v_arr[2] = {1.1, 2.2};
+    float w_arr[2] = {1.1, 2.2};
+    float x_arr[2] = {1.1, 2.2};
+    float y_arr[2] = {1.1, 2.2};
+    float z_arr[2] = {1.1, 2.2};
+
+    // ... 初始化其他数组
+
+    int a_int[2] = {1, 2};
+    int b_int[2] = {1, 2};
+    int c_int[2] = {1, 2};
+    int d_int[2] = {1, 2};
+    int e_int[2] = {1, 2};
+    int f_int[2] = {1, 2};
+    int g_int[2] = {1, 2};
+    int h_int[2] = {1, 2};
+    int i_int[2] = {1, 2};
+    int j_int[2] = {1, 2};
+    int k_int[2] = {1, 2};
+    int l_int[2] = {1, 2};
+    int m_int[2] = {1, 2};
+    int n_int[2] = {1, 2};
+    int o_int[2] = {1, 2};
+    int p_int[2] = {1, 2};
+    int q_int[2] = {1, 2};
+    int r_int[2] = {1, 2};
+    int s_int[2] = {1, 2};
+    int t_int[2] = {1, 2};
+    int u_int[2] = {1, 2};
+    int v_int[2] = {1, 2};
+    int w_int[2] = {1, 2};
+    int x_int[2] = {1, 2};
+    int y_int[2] = {1, 2};
+    int z_int[2] = {1, 2};
+
+    // ... 初始化其他整型数组
+
+    float result = many_params(
+        a, b, c, d, e, f, g, h, i, j,
+        k, l, m, n, o, p, q, r, s, t,
+        u, v, w, x, y, z,
+        a_arr, b_arr, c_arr, d_arr, e_arr, f_arr, g_arr, h_arr, i_arr, j_arr,
+        k_arr, l_arr, m_arr, n_arr, o_arr, p_arr, q_arr, r_arr, s_arr, t_arr,
+        u_arr, v_arr, w_arr, x_arr, y_arr, z_arr,
+        a_int, b_int, c_int, d_int, e_int, f_int, g_int, h_int, i_int, j_int,
+        k_int, l_int, m_int, n_int, o_int, p_int, q_int, r_int, s_int, t_int,
+        u_int, v_int, w_int, x_int, y_int, z_int);
+
+    // std::cout << result << std::endl;
+    putfloat(result);
+    return 0;
+}

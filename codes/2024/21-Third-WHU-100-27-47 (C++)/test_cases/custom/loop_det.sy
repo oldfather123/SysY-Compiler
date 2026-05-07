@@ -1,0 +1,19 @@
+int main(){
+    int i = 1;
+    while(i < 10){
+        int j = 1;
+        while(j < 10){
+            j = j + 1;
+            putch(106); // j
+            putch(61); // =
+            putint(j); // j的值
+            putch(10);
+        }
+        i = i + 1;
+        putch(105); // i
+        putch(61); // =
+        putint(i); // i的值
+        putch(10);
+    }
+    return 0;
+}

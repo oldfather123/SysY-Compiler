@@ -1,0 +1,47 @@
+// 'Welcome to the Japari Park!\n'
+int hello[100] = {87, 101, 108, 99, 111, 109, 101, 32, 116, 111, 32, 116, 104, 101, 32, 74, 97, 112, 97, 114, 105, 32, 80, 97, 114, 107, 33, 10};
+
+/* Names of kemono friends */
+// [0]: Saabaru
+// [1]: Kaban
+// [2]: Hashibirokou
+// [3]: Araiguma
+// [4]: Hunboruto Pengin
+// [5]: Tairiku Ookami
+int name[6][50] = {{83, 97, 97, 98, 97, 114, 117}, {75, 97, 98, 97, 110}, {72, 97, 115, 104, 105, 98, 105, 114, 111, 107, 111, 117}, {65, 114, 97, 105, 103, 117, 109, 97}, {72, 117, 110, 98, 111, 114, 117, 116, 111, 32, 80, 101, 110, 103, 105, 110}, {84, 97, 105, 114, 105, 107, 117, 32, 79, 111, 107, 97, 109, 105}};
+
+int say_hello_to[40] = {32, 115, 97, 121, 115, 32, 104, 101, 108, 108, 111, 32, 116, 111, 32};
+
+int RET[5] = {10};
+
+int putstr(int str[]) {
+    int index;
+    index = 0;
+    while (str[index]) {
+        putch(str[index]);
+        index = index + 1;
+    }
+    return index;
+}
+int main(/*noparam*/) {
+    putstr(hello);
+    int i = 0; /*say    hellotokemonofriends~*/
+    while (1) {
+        float a = i / 6;
+        float b = i % 6;
+        putch(32); putch(105); putch(32); putint(i);
+        putch(32); putch(97); putch(32); putint(a);
+        putch(32); putch(98); putch(32); putint(b); putch(10);
+        if (a == b) {
+            putstr(name[a]);
+            putstr(say_hello_to);
+            putstr(name[b]);
+            putstr(RET);
+        } /*    do        linearmodulotofind    the    nextpairoffriends*/
+        i = (i * 17 + 23) % 32;
+        if (i == 0) {
+            break;
+        }
+    }
+    return 0;
+}
