@@ -1,0 +1,7 @@
+int test(float a, float b, int c, int d, float e)
+{
+    return a + b + c + d + e;
+}
+int main() {
+    return test(2, 2, 2, 2, 2);
+}

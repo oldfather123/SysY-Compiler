@@ -1,0 +1,9 @@
+/target
+/.idea
+/.fleet
+/.vscode
+/log
+/out
+/res
+
+test_sysy

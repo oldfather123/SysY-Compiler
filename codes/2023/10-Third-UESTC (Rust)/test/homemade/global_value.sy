@@ -1,0 +1,26 @@
+int i;
+int j = 3;
+int array_i[5] = {};
+int array_j[3][4] = {{}, {0,0,0,0}, {9,2,5, 5}};
+
+const int a[5]={0,1,2,3,4};
+const int b = 10, c = 5;
+
+int arr1[10][2][3][4][5][6][2];
+float arr2[10][2][3][2][4][8][7];
+
+const int N = -1;
+int arr[N + 2 * 4 - 99 / 99] = {1, 2, 33, 4, 5, 6};
+
+// float array_j[3][4] = {{}, {0.0,0.0,0.0,0.0}, {9.4,2.1,5.4, 5.326}};
+// float array_j[3][4] = {{}, {0.0,0.0,0.0,0.0}, {9.23,2.9,5.2998, 5.88}};
+// float farr[6][2] = {{}, 314.1, 54.2, 33.23, 4.256, -435, 6098};
+
+int main() {
+	int tmp = j;
+	j = tmp + 8;
+	int local_array[3] = {8, 2, 1};
+	tmp = local_array[1];
+	// return tmp;
+	return array_i[4];
+}

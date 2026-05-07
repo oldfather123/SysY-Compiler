@@ -1,0 +1,11 @@
+stages:
+  - build&&test
+
+build&&run:
+  tags:
+    - default
+  stage: build&&test
+  script:
+    - chmod a+x tool/linux/*.sh
+    - ./tool/linux/build.sh
+    - ./tool/linux/test.sh

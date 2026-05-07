@@ -1,0 +1,13 @@
+int arr[2][2];
+int swap() {
+    int t = arr[0][0];
+    arr[0][0] = arr[1][1];
+    arr[1][1] = t;
+}
+
+int main() {
+    arr[0][0] = 1;
+    arr[1][1] = 2;
+    swap(arr);
+    return arr[0][0] - arr[1][1];
+}

@@ -1,0 +1,25 @@
+// a - c
+// |   |
+// b - d
+
+int main(){
+    int t = 0;
+    int sum = 0;
+
+    int a = 1;
+    int b = 2;
+    int c = 3;
+    int d = 4;
+
+    if (t == 0) {
+        sum = a + b;
+    } else if (t == 1) {
+        sum = a + c;
+    } else if (t == 2) {
+        sum = d + b;
+    } else if (t == 3) {
+        sum = d + c;
+    }
+
+    return sum;
+}

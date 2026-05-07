@@ -1,0 +1,11 @@
+.idea/
+out/
+META-INF/
+*.sy
+*.iml
+*.s
+*.ll
+*.txt
+*.exe
+*.in
+*.out

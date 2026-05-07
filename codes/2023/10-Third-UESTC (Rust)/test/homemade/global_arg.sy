@@ -1,0 +1,17 @@
+int var;
+float float_var;
+int arr_var[3][2][5] = {};
+float float_arr_var[3][2][5] = {};
+
+
+int func(int arr[][2][5], int p, float arr_1[][2][5], float fp) {
+	arr[1][2] = 666;
+	p = arr[0][2];
+	int arr2[2][3][5];
+	arr2[1][1][1] = 7;
+	return p;
+}
+
+int main() {
+	return func(arr_var, var, float_arr_var, float_var);
+}

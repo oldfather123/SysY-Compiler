@@ -1,0 +1,10 @@
+newline_style = "Unix"
+edition = "2021"
+merge_imports = true
+format_code_in_doc_comments = false
+normalize_comments = false
+wrap_comments = false
+comment_width = 100
+max_width = 150
+report_fixme = "Always"
+report_todo = "Always"

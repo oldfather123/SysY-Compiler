@@ -1,0 +1,72 @@
+Case 01_mm1:
+运行时间:  2989.89 ms
+Case 01_mm2:
+运行时间:  2728.21 ms
+Case 01_mm3:
+运行时间:  2102.42 ms
+Case 03_sort1:
+运行时间:  2131.38 ms
+Case 03_sort2:
+运行时间:  42611.59 ms
+Case 03_sort3:
+运行时间:  8187.14 ms
+Case 04_spmv1:
+运行时间:  2525.32 ms
+Case 04_spmv2:
+运行时间:  2303.64 ms
+Case 04_spmv3:
+运行时间:  1798.7 ms
+Case fft0:
+运行时间:  11428.61 ms
+Case fft1:
+运行时间:  24176.64 ms
+Case fft2:
+运行时间:  23544.45 ms
+Case gameoflife-gosper:
+运行时间:  9884.94 ms
+Case gameoflife-oscillator:
+运行时间:  8817.91 ms
+Case gameoflife-p61glidergun:
+运行时间:  8690.72 ms
+Case if-combine1:
+运行时间:  454.84 ms
+Case if-combine2:
+运行时间:  666.27 ms
+Case if-combine3:
+运行时间:  1106.46 ms
+Case large_loop_array_1:
+运行时间:  23120.28 ms
+Case large_loop_array_2:
+运行时间:  46222.77 ms
+Case large_loop_array_3:
+运行时间:  18614.46 ms
+Case matmul1:
+运行时间:  4823.69 ms
+Case matmul2:
+运行时间:  4890.94 ms
+Case matmul3:
+运行时间:  4869.39 ms
+Case recursive_call_1:
+运行时间:  21.82 ms
+Case recursive_call_2:
+运行时间:  23.44 ms
+Case recursive_call_3:
+运行时间:  21.99 ms
+Case shuffle0:
+运行时间:  2259.47 ms
+Case shuffle1:
+运行时间:  3460.12 ms
+Case shuffle2:
+运行时间:  11598.1 ms
+Case sl1:
+运行时间:  3274.13 ms
+Case sl2:
+运行时间:  1074.22 ms
+Case sl3:
+运行时间:  514.09 ms
+Case transpose0:
+运行时间:  1280.0 ms
+Case transpose1:
+运行时间:  1892.73 ms
+Case transpose2:
+运行时间:  2974.99 ms

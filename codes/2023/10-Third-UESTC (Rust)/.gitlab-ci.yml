@@ -1,0 +1,44 @@
+# select compiler test docker image 
+# default:
+#  image: docker.art.haizhi.com/public/cicd-rust:nightly-2022-04-12-0.0.6
+#  tags:
+
+
+stages:
+  - check
+  - test
+
+
+# format and compiler chcek
+pre_check:
+  stage: check
+  script:
+    - rustc --version
+    - cargo fmt --all --check
+    - cargo check --release
+    - cargo check --tests --release
+  interruptible: true
+
+
+# unit test for each mod
+unit_test:
+  stage: test
+  script:
+    - cargo test
+
+
+# test SysYCC correctness 
+functional_test:
+  stage: test
+  script:
+    - rm -rf ci_output
+    - cargo build -r --bin compiler
+    - bash scripts/ci_functional_test.sh
+    
+# test SysYCC optimization performance 
+performance_test:
+  stage: test
+  script:
+    - rm -rf ci_output
+    - cargo build -r --bin compiler
+    - bash scripts/ci_performance_test.sh

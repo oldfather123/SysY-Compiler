@@ -1,0 +1,27 @@
+stages:
+  - test
+
+ir_tests:
+  stage: test
+  image: thingdust/llvm-toolchain_305d799f
+  before_script:
+    - sudo apt-get update &&
+      sudo apt-get -y install cmake openjdk-17-jre &&
+      cmake -B build -DCMAKE_BUILD_TYPE=Release &&
+      cmake --build build -j $(nproc)
+  script:
+    - cd testcases
+    - bash IR_checker.sh
+
+backend_tests:
+  stage: test
+  image: riscv64/ubuntu:22.04
+  before_script:
+    - sudo apt-get update &&
+      sudo apt-get -y install gcc gcc cmake openjdk-17-jre &&
+      cmake -B build -DCMAKE_BUILD_TYPE=Release &&
+      cmake --build build -j $(nproc)
+  script:
+    - cd testcases
+    - bash compiler_checker_online.sh
+

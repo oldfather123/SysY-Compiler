@@ -1,0 +1,12 @@
+int main() {
+	return 0;
+}
+
+int if_else_no_return() {
+	int a = 1;
+	if (a > 0) {
+		return 2;
+	} else {
+
+	}
+}

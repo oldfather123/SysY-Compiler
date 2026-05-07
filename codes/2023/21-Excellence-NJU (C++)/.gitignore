@@ -1,0 +1,15 @@
+.cache
+build
+.idea
+bin
+cmake-build-debug
+gen
+testcases/
+*.ll
+*.s
+*.sy
+*.c
+*.ans
+answer.txt
+output.txt
+sylib/

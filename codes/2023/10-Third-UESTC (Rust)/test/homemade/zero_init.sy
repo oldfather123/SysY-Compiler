@@ -1,0 +1,53 @@
+int main() {
+	int zero_0[3][2] = {};
+	int zero_1[2][4] = {0};
+	int zero_2[2][4] = {0, {0}};
+	int zero_3[2][4] = {0, 0, 0, 0, 0, 0, 0, 0};
+	int zero_4[4][2] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
+	int zero_5[2][4] = {0, 0, 0, 0.0, 0, 0.0, 0, 0};
+
+	int none_zero_0[2][4] = {1};
+	int none_zero_1[2][4] = {1, {0}};
+	int none_zero_2[2][4] = {0, 0.0, 1};
+
+	float zero_f0[3][2] = {};
+	float zero_f1[2][4] = {0};
+	float zero_f2[2][4] = {0.0};
+	float zero_f3[2][4] = {0, {0}};
+	float zero_f4[2][4] = {0.0, {0.0}};
+	float zero_f5[2][4] = {0, 0, 0, 0, 0, 0, 0, 0};
+	float zero_f6[2][4] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+	float zero_f7[4][2] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
+	float zero_f8[4][2] = {{0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}};
+	float zero_f9[2][4] = {0, 0, 0, 0.0, 0, 0.0, 0, 0};
+
+	float none_zero_f0[2][4] = {1.0};
+	float none_zero_f1[2][4] = {1.0, {0}};
+	float none_zero_f2[2][4] = {0, 0.0, -1.0};
+
+	const int const_zero_0[3][2] = {};
+	const int const_zero_1[2][4] = {0};
+	// const int const_zero_2[2][4] = {0, {0}};
+	const int const_zero_3[2][4] = {0, 0, 0, 0, 0, 0, 0, 0};
+	const int const_zero_4[4][2] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
+	const int const_zero_5[2][4] = {0, 0, 0, 0.0, 0, 0.0, 0, 0};
+
+	const int none_const_zero_0[2][4] = {1};
+	// const int none_const_zero_1[2][4] = {1, {0}};
+	// const int none_const_zero_2[2][4] = {0, 0.0, 1};
+
+	const float const_zero_f0[3][2] = {};
+	const float const_zero_f1[2][4] = {0};
+	const float const_zero_f2[2][4] = {0.0};
+	// const float const_zero_f3[2][4] = {0, {0}};
+	// const float const_zero_f4[2][4] = {0.0, {0.0}};
+	const float const_zero_f5[2][4] = {0, 0, 0, 0, 0, 0, 0, 0};
+	const float const_zero_f6[2][4] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+	const float const_zero_f7[4][2] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
+	const float const_zero_f8[4][2] = {{0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}};
+	const float const_zero_f9[2][4] = {0, 0, 0, 0.0, 0, 0.0, 0, 0};
+
+	const float none_const_zero_f0[2][4] = {1.0};
+	// const float none_const_zero_f1[2][4] = {1.0, {0}};
+	const float none_const_zero_f2[2][4] = {0, 0.0, -1.0};
+}

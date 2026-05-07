@@ -1,0 +1,12 @@
+int func(int arr[][5], int p) {
+	arr[1][2] = 666;
+	p = arr[0][2];
+	int arr2[2][3][5];
+	arr2[1][1][1] = 7;
+	return p;
+}
+
+int main() {
+	int arr[2][5];
+	return func(arr, 7);
+}
