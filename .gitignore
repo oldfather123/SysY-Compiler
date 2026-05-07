@@ -26,7 +26,6 @@ cmake_install.cmake
 # IDE and editor files
 .idea/
 .vscode/
-.vscode-*
 *.swp
 *.swo
 *~
