@@ -2,10 +2,6 @@
 /.agents/
 /.codex/
 
-# Nested git metadata that should not be committed
-docs/compiler2026/.git/
-docs/discussion/.git/
-
 # Build outputs
 /build/
 /src/build/
@@ -27,6 +23,7 @@ compile_commands.json
 *.exe
 
 # Generated project outputs
+/test/
 /src/test_output/
 
 # IDE and editor files
