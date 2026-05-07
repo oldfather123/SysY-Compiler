@@ -1,0 +1,108 @@
+WHITESPACE = _{ " " | "\t" | NEWLINE }
+NEWLINE = _{ "\r\n" | "\n" | "\r" }
+COMMENT = _{
+  "//" ~ (!NEWLINE ~ ANY)* |
+  "/*" ~ (!"*/" ~ ANY)* ~ "*/"
+}
+
+DecimalInteger = _{ "0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT* }
+HexInteger = _{ ("0X" | "0x") ~ ASCII_HEX_DIGIT+ }
+OctalInteger = _{ "0" ~ ASCII_OCT_DIGIT+ }
+BinaryInteger = _{ ("0b" | "0B") ~ ASCII_BIN_DIGIT+ }
+Integer = ${ HexInteger | BinaryInteger | OctalInteger | DecimalInteger }
+
+Decimals = _{ ASCII_DIGIT+ }
+Exponent = _{ ("e" | "E") ~ ("+" | "-")* ~ Decimals }
+Float = ${ (Decimals ~ "." ~ Decimals? ~ Exponent? ~ ("f" | "F")?)
+          | (Decimals ~ Exponent ~ ("f" | "F")?)
+          | ("." ~ Decimals ~ Exponent? ~ ("f" | "F")?) }
+
+Number = _{ Float | Integer}
+
+// 怎么能不支持下划线，我给他加上了
+Identifier = ${ (ASCII_ALPHA | "_") ~ (ASCII_DIGIT | ASCII_ALPHA | "_")* }
+
+int_t = ${ "int" ~ WHITESPACE }
+float_t = ${ "float" ~ WHITESPACE }
+void_t = ${ "void" ~ WHITESPACE }
+const = _{ "const " | "const\n" | "const\t" }
+return = _{ "return " | "return\n" | "return\t" }
+BType = _{ int_t | float_t }
+FuncType = _{ int_t | float_t | void_t }
+
+Add = { "+" }
+Sub = { "-" }
+Mul = { "*" }
+Div = { "/" }
+Mod = { "%" }
+LT = { "<" }
+LE = { "<=" }
+GT = { ">" }
+GE = { ">=" }
+EQ = { "==" }
+NE = { "!=" }
+LAnd = { "&&" }
+LOr = { "||" }
+Assign = { "=" }
+
+UnaryAdd = { "+" }
+UnarySub = { "-" }
+UnaryNot = { "!" }
+UnaryBitNot = { "~" }
+
+Break = { "break" }
+Continue = { "continue" }
+Return = { return ~ Expr? | "return" }
+
+BinaryOp = _{
+  Add | Sub | Mul | Div | Mod | LE | LT | GE | GT | EQ | NE | LOr | LAnd | Assign
+}
+UnaryOp = _{
+  UnaryAdd | UnarySub | UnaryNot | UnaryBitNot
+}
+
+CompUnit = _{ Decl | FuncDecl }
+DimList = { ("[" ~ Expr ~ "]")* }
+
+Decl = { ConstDecl | VarDecl }
+ConstDecl = { const ~ BType ~ VarDef ~ ("," ~ VarDef)* ~ ";" }
+VarDecl = { BType ~ VarDef ~ ("," ~ VarDef)* ~ ";" }
+VarDef = { Identifier ~ DimList ~ ("=" ~ InitVal)? }
+InitVal = _{ Expr | InitValList }
+InitValList = { "{" ~ (InitVal ~ ("," ~ InitVal)*)? ~ "}" }
+FuncDecl = {
+  FuncType ~ Identifier ~ "(" ~ FormalParams ~ ")" ~ Block
+}
+
+FormalParams = { (FormalParam ~ ("," ~ FormalParam)*)? }
+FormalParam = { BType ~ Identifier ~ ("[" ~ "]" ~ DimList)? }
+RealParams = _{ (Expr ~ ("," ~ Expr)*)? }
+
+Block = { "{" ~ BlockItem* ~ "}" }
+BlockItem = _{ Decl | Stmt }
+
+IfStmt = {
+  "if" ~ "(" ~ Expr ~ ")" ~ Stmt ~ ( "else" ~ Stmt)?
+}
+WhileStmt = {
+  "while" ~ "(" ~ Expr ~ ")" ~ Stmt
+}
+
+Stmt = {
+  ";"
+  | Return ~ ";"
+  | Continue ~ ";"
+  | Break ~ ";"
+  | WhileStmt
+  | Block
+  | IfStmt
+  | Expr ~ ";"
+}
+
+Lval = { Identifier ~ DimList }
+FuncCall = { Identifier ~ "(" ~ RealParams ~ ")"}
+Primary = _{ "(" ~ Expr ~ ")" | Number | FuncCall | Lval }
+Atom = _{ UnaryOp* ~ Primary }
+Expr = { Atom ~ (BinaryOp ~ Atom)* }
+
+Program = _{ SOI ~ (CompUnit)* ~ EOI }

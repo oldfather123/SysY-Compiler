@@ -1,0 +1,31 @@
+add_library(
+    opt
+    DomTree.cc
+    MemToReg.cc
+    CommonSubexpElimination.cc
+    MergeBlock.cc
+    Inlining.cc
+    FunctionPropAnalysis.cc
+    AliasAnalysis.cc
+    LoopAnalysis.cc
+    LoopSimplify.cc
+    LoopInvariantCodeMotion.cc
+    GlobalCodeMotion.cc
+    LoopInfo.cc
+    GlobalValueNumbering.cc
+    LoopUnroll.cc
+    TailRecursionElimination.cc
+    DeadCodeElimination.cc
+    ConstantFolding.cc
+    GlobalVariableLocalize.cc
+    StrengthReduction.cc
+    LoadElimination.cc
+    Reassociate.cc
+    GEPSimplify.cc
+    CFGSimplify.cc
+    StoreElimination.cc
+    LruCache.cc
+    InductionVariableSimplify.cc
+    LoopIdvSimplify.cc
+    DeadArgumentElimination.cc
+)

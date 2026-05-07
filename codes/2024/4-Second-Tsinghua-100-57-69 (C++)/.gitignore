@@ -1,0 +1,11 @@
+main
+build/
+.vscode/
+.idea/
+Makefile
+*.cmake
+CMakeCache.txt
+compiler
+.DS_Store
+sylib.o
+tmp

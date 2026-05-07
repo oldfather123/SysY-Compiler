@@ -1,0 +1,24 @@
+# Xmake cache
+.xmake/
+.cache/
+build/
+*.ll
+*.bc
+*.output
+test/testcase
+
+# MacOS Cache
+.DS_Store
+
+*.sy
+.vscode/
+test/testcase
+testcase/
+mcg.sh
+test.c
+
+*.in
+*.output
+*.out
+*.s
+*.o

@@ -1,0 +1,40 @@
+slot @a: 4 = undef
+slot @arr: 4 = [ 0xef, 0xbe, 0xad, 0xde ]
+
+decl @x /* 0 */ () -> void
+
+decl @test_func( f32 ) -> i32
+
+func @test /* 0 */ () -> void {
+^bb0 /* 0 */ :
+    %ptr = stack_slot 0x4: ptr
+    %undef = undef : i32
+    %v0 /* 2 */ = iconst 0x00000001i32 : i32
+    %v1 /* 3 */ = fconst 0x40000000 : f32
+    %dummy_cond /* 4 */ = iconst 1i1 : i1
+    /* no result */ br %dummy_cond, ^bb1, ^bb2
+
+^bb1 /* 1 */ :
+    %v2 /* 5 */ = add %v0, %v0 : i32
+    /* no result */ jump ^merge(%v2, %v1)
+
+^bb2 /* 2 */ :
+    %v3 /* 6 */ = mul %v0, %v0 : i32
+    /* no result */ jump ^merge(%v3, %v1)
+
+^merge /* 3 */ (%p1: i32 /* 0 */, %p2: f32 /* 1 */):
+    call @x() : void
+
+    // get_global
+    %test_func_ptr = get_global @test_func : ptr
+    // indirect call with function pointer
+    // %res = call_indirect (f32) -> i32, %test_func_ptr(%p2) : i32
+
+    // direct call with symbol
+    %res_direct = call @test_func(%p2) : i32
+
+    %v4 /* 7 */ = add %p1, %p1 : i32
+    /* no result */ ret void
+
+} /* Just a test function comment at end */
+// Just a test function comment after

@@ -1,0 +1,25 @@
+add_library(
+    opt_lib STATIC
+    Dominators.cpp
+    Mem2Reg.cpp
+    FuncInfo.cpp
+    DeadCode.cpp
+    LoopDetection.cpp
+    LICM.cpp
+    PartiallyUnrolling.cpp
+    AllUnrolling.cpp
+    FuncInline.cpp
+    ConstProp.cpp
+    SimplifyCFG.cpp
+    PassBuilder.cpp
+    PassManager.cpp
+    SCEV.cpp
+    LoopSimplify.cpp
+    GVN.cpp
+    LCSSA.cpp
+    LoopRotate.cpp
+    TailRecurEliminate.cpp
+    CSE.cpp
+    InstCombine.cpp
+    LoopGepCombine.cpp
+)

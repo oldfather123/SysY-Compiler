@@ -1,0 +1,9 @@
+bin
+build
+example
+.vscode
+CMakeFiles
+tests/test.*
+tests/test
+tmp
+tests/compiler2023

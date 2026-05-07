@@ -1,0 +1,13 @@
+package cn.edu.nju.software.backendarm.arminstruction;
+
+import cn.edu.nju.software.backendarm.arminstruction.operand.ArmLabelAddress;
+import cn.edu.nju.software.backendarm.arminstruction.operand.ArmOperand;
+import cn.edu.nju.software.backendarm.arminstruction.util.ArmLabel;
+import cn.edu.nju.software.backendarm.arminstruction.util.ArmOpcode;
+
+public class ArmBx extends ArmDefaultInstruction {
+
+        public ArmBx(ArmOperand... armOperands) {
+            super(ArmOpcode.BX, armOperands);
+        }
+}

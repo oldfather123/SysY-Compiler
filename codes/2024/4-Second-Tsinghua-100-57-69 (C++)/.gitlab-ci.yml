@@ -1,0 +1,23 @@
+image: ubuntu:latest
+
+stages:
+  - build
+  - test
+
+before_script:
+  - apt-get update -qy
+  - apt-get install -y build-essential cmake gcc g++ libc6-dev qemu qemu-user
+
+build:
+  stage: build
+  script:
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make
+    - cd ..
+
+test:
+  stage: test
+  script:
+    - sh test.sh

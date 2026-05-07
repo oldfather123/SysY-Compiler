@@ -1,0 +1,16 @@
+/gen/
+/.idea/
+/out/
+/test/
+/target/
+/tests/
+/src/Test.java
+/functional
+/hidden_functional
+/makefile
+/bin
+/unpass
+/performance
+/final_performance
+/h_performance
+/tests

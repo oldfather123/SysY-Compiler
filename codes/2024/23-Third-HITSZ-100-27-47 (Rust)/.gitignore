@@ -1,0 +1,11 @@
+/target
+.vscode
+.direnv
+config.yaml
+.idea
+data
+
+1.ll
+1.s
+1.sy
+a.out

@@ -1,0 +1,167 @@
+#!/bin/bash
+
+# 使用说明:
+# bash auto_test : 把 sy_path 中所有文件运行一遍
+# bash auto_test ./for_auto_test/00sy/***.sy : 只运行一边这个 sy 文件
+# 本脚本自动将 .in 文件输入（如果有的话）然后输出到 .ours_out 文件夹下，并自动和 .official_out 文件夹中的 .out 进行比对
+# 有 .in，把 .in 文件输入
+# 没 .in，直接运行 .sy 文件
+
+# 加更,若使用bash auto_test --performance ,则测试./for_auto_test/00performance下的.sy文件,并输出到./for_auto_test/4ours_out/文件夹下
+
+export in_path=./for_auto_test/00in
+export official_path=./for_auto_test/00official_out
+export sy_path=./for_auto_test/00sy
+export performance_sy_path=./for_auto_test/00performance
+
+export s_path=./for_auto_test/1s
+export o_path=./for_auto_test/2o
+export elf_path=./for_auto_test/3elf
+export ours_out_path=./for_auto_test/4ours_out
+
+# 定义颜色
+export RED='\033[0;31m'
+export GREEN='\033[0;32m'
+export NC='\033[0m' # 没有颜色
+
+timeout_duration=4s
+
+# 删除指定目录中的所有内容
+rm -rf $elf_path/*
+rm -rf $o_path/*
+rm -rf $ours_out_path/*
+rm -rf $s_path/*
+
+cargo build --release
+
+compiler=./target/release/compiler
+
+# 初始化数组
+files_to_compare=()
+
+# 初始化计数器
+correct_count=0
+incorrect_count=0
+
+ours_out_path=./for_auto_test/4ours_out/
+sy_path=./for_auto_test/00performance
+
+mkdir -p $ours_out_path
+# 检查是否提供了单个 .sy 文件作为参数或 --performance 选项
+if [ "$#" -gt 0 ]; then
+    sy_files=("$1")
+else
+    sy_files=($sy_path/*.sy)
+fi
+
+if [ "$#" -eq 2 ]; then
+    compiler=("$2")
+    echo use additional compiler $compiler
+fi
+
+# 设置标志变量，默认为 false
+has_d_option=false
+
+# 遍历所有的命令行参数
+for arg in "$@"; do
+    if [[ "$arg" == "-d" ]]; then
+        has_d_option=true
+        break
+    fi
+done
+
+# 遍历指定路径下的所有文件
+for filename in "${sy_files[@]}"; do
+    # 检查是否为文件
+    echo "Processing $filename"
+    if [ -f "$filename" ] && [[ "$filename" == *.sy ]]; then
+        echo "is_file"
+        # 获取文件的基本名称，没有路径
+        export base_name=$(basename "$filename" .sy)
+        # 执行编译命令，输出到同一目录
+
+        # 根据标志变量的值输出结果
+        if $has_d_option; then
+            echo "存在 -d 选项"
+            $compiler "$filename" -o "$s_path/${base_name}.s" -a 2> /dev/null
+        else
+            echo "不存在 -d 选项"
+            $compiler "$filename" -o "$s_path/${base_name}.s" 2> /dev/null
+        fi
+        compile_status=$?
+
+        if [ $compile_status -ne 0 ]; then
+            echo -e "$RED Failed to compile $filename $NC"
+            $compiler "$filename" -o "$s_path/${base_name}.s" 2>> "$o_path/${base_name}_compiler_error.log"
+            continue
+        fi
+
+        # 使用 gcc 工具链把 .s 文件链接
+        riscv64-linux-gnu-as "$s_path/${base_name}.s" -o "$o_path/${base_name}.o"
+        riscv64-linux-gnu-gcc --static "$o_path/${base_name}.o" -lsysy -L./ -o "$elf_path/${base_name}.elf" -lc
+
+        # 检查 ELF 文件是否生成
+        if [ ! -s "$elf_path/${base_name}.elf" ]; then
+            echo -e "$RED Failed to generate ELF file: $elf_path/${base_name}.elf $NC"
+            exit 1
+        fi
+
+        # 如果有对应的 .in 文件，运行 .elf 文件，并将结果输出到 ours_out
+        # timeout $timeout_duration bash -c '
+        if [ -f "$in_path/${base_name}.in" ]; then
+            qemu-riscv64-static "$elf_path/${base_name}.elf" < "$in_path/${base_name}.in" > "$ours_out_path/${base_name}.out" 2>&1
+            echo -e "\n$?" >> "$ours_out_path/${base_name}.out"
+        else
+            qemu-riscv64-static "$elf_path/${base_name}.elf" > "$ours_out_path/${base_name}.out" 2>&1
+            echo -e "\n$?" >> "$ours_out_path/${base_name}.out"
+        fi
+
+        # if diff -wB "$ours_out_path/${base_name}.out" "$official_path/${base_name}.out" > /dev/null; then
+        #     echo -e "${GREEN}${base_name} 过了${NC}"
+        # else
+        diff -wB "$ours_out_path/${base_name}.out" "$official_path/${base_name}.out" -y | head -n 10
+        #     echo -e "${RED}${base_name} 结果不一样!${NC}"
+        # fi
+
+        
+        total_line=$(grep "^TOTAL" "$ours_out_path/${base_name}.out")
+
+        # # 检查是否找到以 TOTAL 开头的行
+        if [ -n "$total_line" ]; then
+            # 使用 echo 命令将该行加红并打印
+            # 红色文本的 ANSI 转义码是 \033[31m，重置颜色的 ANSI 转义码是 \033[0m
+            echo -e "${GREEN}$total_line${NC}"
+        else
+            echo "没有找到以 TOTAL 开头的行。"
+        fi
+        # '
+        # timeout_status=$?
+        # if [ $timeout_status -eq 124 ]; then
+        #     echo "Timeout occurred: Code block did not complete within $timeout_duration seconds"
+        # else
+        #     echo
+        # fi
+
+        files_to_compare+=("$ours_out_path/${base_name}.out $official_path/${base_name}.out")
+    fi
+done
+
+# 执行所有文件的比对
+for files in "${files_to_compare[@]}"; do
+    # 拆分文件路径
+    IFS=' ' read -r ours_file official_file <<< "$files"
+    # if diff -wB "$ours_file" "$official_file" > /dev/null; then
+    # echo $ours_file
+    time=$(grep "^TOTAL" "$ours_file")
+        echo -e "${GREEN}$(basename "$ours_file") 耗时 ${time} ${NC}"
+        let correct_count++
+    # else
+        # echo -e "${RED}$(basename "$ours_file") 结果不一样!${NC}"
+        # diff -wB "$ours_out_path/$(basename "$ours_file")" "$official_path/$(basename "$ours_file")" -y | head -n 10
+        # let incorrect_count++
+    # fi
+done
+
+# 输出统计结果
+echo -e "${GREEN}通过的文件数: $correct_count${NC}"
+# echo -e "${RED}未通过的文件数: $incorrect_count${NC}"

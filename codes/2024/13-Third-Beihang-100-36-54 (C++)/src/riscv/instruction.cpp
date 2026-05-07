@@ -1,0 +1,149 @@
+//
+// Created by toby on 2024/8/6.
+//
+
+#include "../riscv/instruction.h"
+#include <iterator>
+#include <memory>
+#include "../backend/operand.h"
+#include "../riscv/alias.h"
+#include "../riscv/operand.h"
+#include "../util.h"
+
+namespace backend::riscv {
+
+namespace {
+bool isLegalImm(rImmediate imm, int low, int high, int stack = 0) {
+    if (auto i = dynamic_cast<rIntImmediate>(imm)) {
+        auto val = i->value + (i->in_stack ? stack : 0);
+        return low <= val && val <= high;
+    } else if (auto s = dynamic_cast<rSplitImmediate>(imm)) {
+        return true;
+    } else if (auto j = dynamic_cast<rJoinImmediate>(imm)) {
+        auto value = j->accumulate(stack);
+        return j->label == nullptr && low <= value && value <= high;
+    } else {
+        __builtin_unreachable();
+    }
+}
+
+// return {hi[31:12], lo[11:0]}
+std::pair<pImmediate, pImmediate> splitImm(rImmediate imm) {
+    std::pair<pImmediate, pImmediate> ret;
+    auto &[hi, lo] = ret;
+    if (auto i = dynamic_cast<rIntImmediate>(imm)) {
+        auto u = static_cast<unsigned>(i->value);
+        auto hiv = u >> 12, lov = u & 0xFFF;
+        if (lov & 0x800) hiv = (hiv + 1) & 0xFFFFF, lov |= 0xFFFF'F000;
+        hi = create_imm((int)hiv);
+        lo = create_imm((int)lov);
+    } else if (auto s = dynamic_cast<rSplitImmediate>(imm)) {
+        TODO("should not split twice");
+    } else {
+        hi = create_imm_hi(imm->clone());
+        lo = create_imm_lo(imm->clone());
+    }
+    return ret;
+}
+
+// split imm to x31 and push to parent
+template <typename Func>
+void splitAndPush(bool X32, rImmediate imm, Func &&push, rRegister x31 = "x31"_R) {
+    auto [hi, lo] = splitImm(imm);
+    push(std::make_unique<UInstruction>(Instruction::Ty::LUI, x31, std::move(hi)));
+    if (auto i = dynamic_cast<rIntImmediate>(lo.get()); i && i->value == 0) return;
+    push(std::make_unique<IInstruction>(X32 ? Instruction::Ty::ADDIW : Instruction::Ty::ADDI, x31,
+                                        x31, std::move(lo)));
+}
+
+// split imm+reg to x31+lo and push to parent
+template <typename Func>
+pImmediate splitAndPush(bool X32, rImmediate imm, rRegister reg, Func &&push,
+                        rRegister x31 = "x31"_R) {
+    auto [hi, lo] = splitImm(imm);
+    push(std::make_unique<UInstruction>(Instruction::Ty::LUI, x31, std::move(hi)));
+    if (reg == "x0"_R) return std::move(lo);
+    push(std::make_unique<RInstruction>(X32 ? Instruction::Ty::ADDW : Instruction::Ty::ADD, x31,
+                                        x31, reg));
+    return std::move(lo);
+}
+
+Instruction::Ty TyI2R(Instruction::Ty ty) {
+    switch (ty) {
+    case Instruction::Ty::ADDI: return Instruction::Ty::ADD;
+    case Instruction::Ty::SLTI: return Instruction::Ty::SLT;
+    case Instruction::Ty::SLTIU: return Instruction::Ty::SLTU;
+    case Instruction::Ty::XORI: return Instruction::Ty::XOR;
+    case Instruction::Ty::ORI: return Instruction::Ty::OR;
+    case Instruction::Ty::ANDI: return Instruction::Ty::AND;
+    case Instruction::Ty::ADDIW: return Instruction::Ty::ADDW;
+    case Instruction::Ty::SLLI:
+    case Instruction::Ty::SRLI:
+    case Instruction::Ty::SRAI:
+    case Instruction::Ty::SLLIW:
+    case Instruction::Ty::SRLIW:
+    case Instruction::Ty::SRAIW: TODO("should not overflow!!!");
+    default: TODO("why you reach here??");
+    }
+}
+}  // namespace
+
+bool IInstruction::maybe_illegal() const {
+    auto func = parent->parent->parent;
+    auto size = func->allocaSize + func->argSize + 64 * 8;
+    if (ty == Instruction::Ty::ADDI || ty == Instruction::Ty::ADDIW)
+        return !isLegalImm(imm.get(), -2048 * 2, 2047 * 2, static_cast<int>(size));
+    return !isLegalImm(imm.get(), -2048, 2047, static_cast<int>(size));
+}
+
+bool SInstruction::maybe_illegal() const {
+    auto func = parent->parent->parent;
+    auto size = func->allocaSize + func->argSize + 64 * 8;
+    return !isLegalImm(imm.get(), -2048, 2047, static_cast<int>(size));
+}
+
+inst_node_t IInstruction::legalize() {
+    if (isLegalImm(imm.get(), -2048, 2047)) return std::next(node);
+    const auto push = [this](pInstruction inst) { parent->insert(node, std::move(inst)); };
+    if (ty == Instruction::Ty::ADDI || ty == Instruction::Ty::ADDIW) {
+        if (isLegalImm(imm.get(), 2048, 2047 * 2)) {
+            push(std::make_unique<IInstruction>(ty, rd(), rs1(), create_imm(2047)));
+            push(std::make_unique<IInstruction>(ty, rd(), rd(), join_imm(imm, create_imm(-2047))));
+            return parent->erase(node);
+        } else if (isLegalImm(imm.get(), -2048 * 2, -2049)) {
+            push(std::make_unique<IInstruction>(ty, rd(), rs1(), create_imm(-2048)));
+            push(std::make_unique<IInstruction>(ty, rd(), rd(), join_imm(imm, create_imm(2048))));
+            return parent->erase(node);
+        }
+    }
+    const auto temp = rd() == rs1() || rd()->isFloat() ? "x31"_R : rd();
+    assert(maybe_illegal());
+    const bool x32 = magic_enum::enum_name(ty).back() == 'W';
+    if (isLoad()) {
+        auto offset = splitAndPush(false, imm.get(), rs1(), push, temp);
+        push(std::make_unique<IInstruction>(ty, rd(), temp, std::move(offset)));
+    } else if ((ty == Ty::ADDI || ty == Ty::ADDIW) && rs1() == "x0"_R) {
+        splitAndPush(x32, imm.get(), push, rd());
+    } else {
+        splitAndPush(x32, imm.get(), push, temp);
+        auto new_ty = TyI2R(ty);
+        push(std::make_unique<RInstruction>(new_ty, rd(), rs1(), temp));
+    }
+    return parent->erase(node);
+}
+
+inst_node_t SInstruction::legalize() {
+    if (isLegalImm(imm.get(), -2048, 2047)) return std::next(node);
+    assert(maybe_illegal());
+    const auto push = [this](pInstruction inst) { parent->insert(node, std::move(inst)); };
+    auto offset = splitAndPush(false, imm.get(), rs2(), push);
+    push(std::make_unique<SInstruction>(ty, rs1(), "x31"_R, std::move(offset)));
+    return parent->erase(node);
+}
+
+inst_node_t UInstruction::legalize() {
+    if (isLegalImm(imm.get(), 0, (1 << 20) - 1)) return std::next(node);
+    TODO("Illegal immediate for UInstruction!!!");
+}
+
+}  // namespace backend::riscv

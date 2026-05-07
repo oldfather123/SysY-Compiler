@@ -1,0 +1,24 @@
+digraph llvm_transformation {
+    bgcolor=transparent;
+    node [fontcolor=white, color=white];
+    edge [color=white];
+
+    compound=true; // 允许跨子图的边
+    node [shape=box];
+    rankdir=LR; 
+    newrank=true; // 使用新的排列引擎
+    Sysy [label="Sysy", shape=ellipse]
+    FrontEnd [label="FrontEnd"];
+    LLVM_IR [label="LLVM IR", shape=ellipse];
+    IRPasses [label="IR passes", shape=ellipse];
+    BackEnd [label="CodeGen"];
+    TargetCode [label="Loongarch asm", shape=ellipse];
+
+    Sysy -> FrontEnd;
+    FrontEnd -> LLVM_IR;
+    LLVM_IR -> IRPasses;
+    IRPasses -> LLVM_IR;
+    LLVM_IR -> BackEnd;
+    BackEnd -> TargetCode;
+    {rank=same; Sysy; FrontEnd; LLVM_IR; BackEnd; TargetCode;}
+}

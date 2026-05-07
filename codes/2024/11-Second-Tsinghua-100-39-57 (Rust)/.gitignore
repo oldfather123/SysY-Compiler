@@ -1,0 +1,7 @@
+**/target
+**/tmp
+Cargo.lock
+**/main.rs
+!src/main.rs
+sysyc-tests
+.vscode

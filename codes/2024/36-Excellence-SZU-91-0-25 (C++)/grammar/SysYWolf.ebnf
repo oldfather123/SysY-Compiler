@@ -1,0 +1,40 @@
+# SysYWolf is modified by SysY2022
+
+<Translation_Unit> ::= {<Variable_Declaration>|<Function_Definition>} CODE_EOF
+
+
+<Variable_Declaration> ::= [CONST] (INT|FLOAT) <Variable_Definition>{","<Variable_Definition>} ";"
+<Variable_Definition> ::= IDENTIFIER {"["<Expression>"]"} ["="<Variable_InitValue>]
+<Variable_InitValue> ::= <Expression> | "{" [<Variable_InitValue>{","<Variable_InitValue>}] "}"
+
+
+<Function_Definition> ::= (VOID|INT|FLOAT) IDENTIFIER "(" [<Parameter_List>] ")" "{"{<Statement>}"}"
+<Parameter_List> ::= <Parameter>{","<Parameter>}
+<Parameter> ::= (INT|FLOAT) IDENTIFIER ["[""]"{"["<Expression>"]"}]
+
+
+<Compound_Statement> ::= "{"{<Statement>}"}"
+<Statement> ::= <Compound_Statement> | <Variable_Declaration> | <Assign_Statement> | <Expression_Statement> |
+                <If_Statement> | <While_Statement> | <Break_Statement> | <Continue_Statement> | 
+                <Return_Statement>
+
+<Assign_Statement> ::= IDENTIFIER{"["<Expression>"]"} "=" <Expression> ";"
+<Expression_Statement> ::= [<Expression>] ";"
+<If_Statement> ::= IF"("<Condition_Expression>")"<Statement>[ELSE<Statement>]
+<While_Statement> ::= WHILE"("<Condition_Expression>")"<Statement>
+<Break_Statement> ::= BREAK ";"
+<Continue_Statement> ::= CONTINUE ";"
+<Return_Statement> ::= RETURN [<Expression>] ";"
+
+
+<Condition_Expression> ::= <LogicOr_Expression>
+<Expression> ::= <AddSub_Expression>
+<LogicOr_Expression> ::= <LogicAnd_Expression>{"||"<LogicAnd_Expression>}
+<LogicAnd_Expression> ::= <Equal_Expression>{"&&"<Equal_Expression>}
+<Equal_Expression> ::= <Relation_Expression>{("=="|"!=")<Relation_Expression>}
+<Relation_Expression> ::= <AddSub_Expression>{("<"|"<="|">"|">=")<AddSub_Expression>}
+<AddSub_Expression> ::= <MulDiv_Expression>{("+"|"-")<MulDiv_Expression>}
+<MulDiv_Expression> ::= <Unary_Expression>{("*"|"/"|"%")<Unary_Expression>}
+<Unary_Expression> ::= {("+"|"-"|"!")} (<Primary_Expression> | <FunctionCall_Expression>)
+<Primary_Expression> ::= "("<Expression>")" | IDENTIFIER{"["<Expression>"]"} | CONSTANT_INT | CONSTANT_FLOAT
+<FunctionCall_Expression> ::= IDENTIFIER"("[<Expression>{","<Expression>}]")"

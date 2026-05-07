@@ -1,0 +1,64 @@
+parser.y: warning: 2 shift/reduce conflicts [-Wconflicts-sr]
+parser.y: warning: 4 reduce/reduce conflicts [-Wconflicts-rr]
+parser.y: warning: reduce/reduce conflict on token Ident [-Wcounterexamples]
+  First example: INT . Ident LPAREN RPAREN Block $end
+  First reduce derivation
+    $accept
+    `-> 0: CompUnit                                              $end
+           `-> 3: FuncDef
+                  `-> 5: FuncType      Ident LPAREN RPAREN Block
+                         `-> 14: INT .
+  Second example: INT . Ident VarDefGroup SEMICOLON $end
+  Second reduce derivation
+    $accept
+    `-> 0: CompUnit                                                                 $end
+           `-> 4: Decl
+                  `-> 36: VarDecl
+                          `-> 38: BType         VarDef        VarDefGroup SEMICOLON
+                                  `-> 62: INT . `-> 41: Ident
+parser.y: warning: reduce/reduce conflict on token Ident [-Wcounterexamples]
+  First example: FLOAT . Ident LPAREN RPAREN Block $end
+  First reduce derivation
+    $accept
+    `-> 0: CompUnit                                                $end
+           `-> 3: FuncDef
+                  `-> 5: FuncType        Ident LPAREN RPAREN Block
+                         `-> 15: FLOAT .
+  Second example: FLOAT . Ident VarDefGroup SEMICOLON $end
+  Second reduce derivation
+    $accept
+    `-> 0: CompUnit                                                                   $end
+           `-> 4: Decl
+                  `-> 36: VarDecl
+                          `-> 38: BType           VarDef        VarDefGroup SEMICOLON
+                                  `-> 63: FLOAT . `-> 41: Ident
+parser.y: warning: reduce/reduce conflict on tokens COMMA, SEMICOLON [-Wcounterexamples]
+  Example: BType Ident . SEMICOLON
+  First reduce derivation
+    VarDecl
+    `-> 38: BType VarDef          VarDefGroup    SEMICOLON
+                  `-> 41: Ident . `-> 38: %empty
+  Second reduce derivation
+    VarDecl
+    `-> 38: BType VarDef                         VarDefGroup    SEMICOLON
+                  `-> 43: Ident ConstExpGroup    `-> 38: %empty
+                                `-> 60: %empty .
+parser.y: warning: shift/reduce conflict on token ASSIGN [-Wcounterexamples]
+  Example: Ident . ASSIGN InitVal
+  Shift derivation
+    VarDef
+    `-> 42: Ident . ASSIGN InitVal
+  Reduce derivation
+    VarDef
+    `-> 44: Ident ConstExpGroup    ASSIGN InitVal
+                  `-> 60: %empty .
+parser.y: warning: shift/reduce conflict on token ELSE [-Wcounterexamples]
+  Example: IF LPAREN Cond RPAREN IF LPAREN Cond RPAREN Stmt . ELSE Stmt
+  Shift derivation
+    Stmt
+    `-> 24: IF LPAREN Cond RPAREN Stmt
+                                  `-> 25: IF LPAREN Cond RPAREN Stmt . ELSE Stmt
+  Reduce derivation
+    Stmt
+    `-> 25: IF LPAREN Cond RPAREN Stmt                                 ELSE Stmt
+                                  `-> 24: IF LPAREN Cond RPAREN Stmt .

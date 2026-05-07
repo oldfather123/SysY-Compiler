@@ -1,0 +1,4 @@
+error color
+constant string
+Argument is const subarray
+when condition is small,maybe if is better than switch

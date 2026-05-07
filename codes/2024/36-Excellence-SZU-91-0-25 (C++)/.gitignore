@@ -1,0 +1,13 @@
+# Build file
+build/
+bin/
+
+# Reduce size
+doc/
+lib/
+test/
+util/
+
+# Others
+.vscode/
+.VSCodeCounter/

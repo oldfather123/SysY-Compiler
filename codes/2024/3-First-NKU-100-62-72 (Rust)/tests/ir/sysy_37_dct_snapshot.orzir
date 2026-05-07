@@ -1,0 +1,845 @@
+slot @__GLOBAL_VAR_test_idct /* 4 */  : 256 = zeroinit
+slot @__GLOBAL_VAR_test_block /* 2 */  : 256 = zeroinit
+slot @__GLOBAL_VAR_test_dct /* 3 */  : 256 = zeroinit
+decl @_sysy_starttime(i32) -> void
+decl @getfloat() -> f32
+decl @putfarray(i32, ptr) -> void
+decl @putfloat(f32) -> void
+decl @getch() -> i32
+decl @getfarray(ptr) -> i32
+decl @putch(i32) -> void
+decl @putint(i32) -> void
+decl @getarray(ptr) -> i32
+decl @memcpy(ptr, ptr, i32) -> void
+decl @getint() -> i32
+decl @memset(ptr, i32, i32) -> void
+decl @putarray(i32, ptr) -> void
+decl @_sysy_stoptime(i32) -> void
+func @my_sin_impl /* 2 */ (f32) -> f32 {
+^bb2 /* 8 */ (%__PARAM_my_sin_impl_x: f32 /* 30, no.0 */):
+    %v32 /* 85, uses: 1 */ = iconst 0x0i32 : i32
+    %v31 /* 84, uses: 1 */ = sitofp %v32 : f32
+    %v36 /* 99, uses: 1 */ = fcmp.ult %v31, %__PARAM_my_sin_impl_x : i1
+    /* no result */ br %v36, ^bb4(%__PARAM_my_sin_impl_x), ^bb5
+
+^bb4 /* 41 */ (%v33: f32 /* 91, no.0 */):
+    %v13 /* 36, uses: 1 */ = fconst 0x358637bd : f32
+    %v14 /* 37, uses: 1 */ = fcmp.ule %v33, %v13 : i1
+    /* no result */ br %v14, ^bb3(%__PARAM_my_sin_impl_x), ^if.else_1
+
+^bb5 /* 55 */ :
+    %v37 /* 100, uses: 1 */ = fneg %__PARAM_my_sin_impl_x : f32
+    /* no result */ jump ^bb4(%v37)
+
+^if.else_1 /* 12 */ :
+    %v15 /* 40, uses: 1 */ = fconst 0x40400000 : f32
+    %v16 /* 41, uses: 1 */ = fdiv %__PARAM_my_sin_impl_x, %v15 : f32
+    %v17 /* 42, uses: 4 */ = call @my_sin_impl(%v16) : f32
+    %v46 /* 134, uses: 1 */ = iconst 0x4i32 : i32
+    %v41 /* 120, uses: 1 */ = sitofp %v46 : f32
+    %v42 /* 124, uses: 1 */ = fmul %v41, %v17 : f32
+    %v43 /* 130, uses: 1 */ = fmul %v42, %v17 : f32
+    %v35 /* 97, uses: 1 */ = fmul %v43, %v17 : f32
+    %v38 /* 103, uses: 1 */ = iconst 0x3i32 : i32
+    %v39 /* 115, uses: 1 */ = sitofp %v38 : f32
+    %v40 /* 116, uses: 1 */ = fmul %v39, %v17 : f32
+    %v34 /* 96, uses: 1 */ = fsub %v40, %v35 : f32
+    /* no result */ jump ^bb3(%v34)
+
+^bb3 /* 9 */ (%v109: f32 /* 549, no.0 */):
+    /* no result */ ret %v109
+
+}
+func @main /* 8 */ () -> i32 {
+^bb6 /* 74 */ :
+    %v82 /* 488, uses: 9 */ = call @getint() : i32
+    %v84 /* 490, uses: 9 */ = call @getint() : i32
+    %v86 /* 492, uses: 12 */ = iconst 0x0i32 : i32
+    %v27 /* 77, uses: 8 */ = iconst 0x2i32 : i32
+    %v29 /* 80, uses: 8 */ = iconst 0x5i32 : i32
+    %v97 /* 517, uses: 22 */ = iconst 0x1i32 : i32
+    %v100 /* 522, uses: 2 */ = get_global @__GLOBAL_VAR_test_block : ptr
+    /* no result */ jump ^while.entry_12(%v86)
+
+^while.entry_12 /* 76 */ (%v72: i32 /* 375, no.0 */):
+    %v87 /* 495, uses: 1 */ = icmp.slt %v72, %v82 : i1
+    /* no result */ br %v87, ^while.body_12, ^while.exit_12
+
+^while.exit_12 /* 77 */ :
+    %v415 /* 1012, uses: 1 */ = iconst 0x4i32 : i32
+    %v416 /* 1013, uses: 16 */ = sitofp %v415 : f32
+    %v412 /* 1009, uses: 1 */ = iconst 0x3i32 : i32
+    %v413 /* 1010, uses: 16 */ = sitofp %v412 : f32
+    %v275 /* 788, uses: 16 */ = fconst 0x40400000 : f32
+    %v273 /* 786, uses: 16 */ = fconst 0x358637bd : f32
+    %v270 /* 783, uses: 16 */ = sitofp %v86 : f32
+    %v267 /* 779, uses: 4 */ = fconst 0xc0490fdb : f32
+    %v258 /* 769, uses: 4 */ = fconst 0xc0c90fdb : f32
+    %v257 /* 768, uses: 4 */ = iconst 0x1i1 : i1
+    %v255 /* 766, uses: 20 */ = fconst 0x40c90fdb : f32
+    %v253 /* 764, uses: 4 */ = fconst 0x3fc90fdb : f32
+    %v21 /* 49, uses: 2 */ = sitofp %v84 : f32
+    %v85 /* 491, uses: 6 */ = fconst 0x40490fdb : f32
+    %v56 /* 193, uses: 2 */ = fdiv %v85, %v21 : f32
+    %v55 /* 184, uses: 6 */ = fconst 0x3f000000 : f32
+    %v81 /* 487, uses: 2 */ = sitofp %v82 : f32
+    %v54 /* 183, uses: 2 */ = fdiv %v85, %v81 : f32
+    %v108 /* 546, uses: 1 */ = fconst 0x0 : f32
+    %v22 /* 54, uses: 1 */ = undef : i32
+    %v80 /* 485, uses: 1 */ = undef : i32
+    %v99 /* 519, uses: 7 */ = get_global @__GLOBAL_VAR_test_dct : ptr
+    /* no result */ jump ^bb7(%v80, %v86, %v22)
+
+^while.body_12 /* 78 */ :
+    %v30 /* 82, uses: 1 */ = shl %v72, %v29 : i32
+    /* no result */ jump ^while.entry_13(%v86)
+
+^bb7 /* 199 */ (%v73: i32 /* 389, no.0 */, %v74: i32 /* 390, no.1 */, %v48: i32 /* 143, no.2 */):
+    %v57 /* 194, uses: 1 */ = icmp.slt %v74, %v82 : i1
+    /* no result */ br %v57, ^bb8, ^bb48
+
+^while.entry_13 /* 79 */ (%v71: i32 /* 374, no.0 */):
+    %v90 /* 500, uses: 1 */ = icmp.slt %v71, %v84 : i1
+    /* no result */ br %v90, ^while.body_13, ^while.exit_13
+
+^bb8 /* 200 */ :
+    %v104 /* 535, uses: 1 */ = sitofp %v74 : f32
+    %v102 /* 527, uses: 1 */ = shl %v74, %v29 : i32
+    /* no result */ jump ^bb9(%v86, %v73, %v48)
+
+^bb48 /* 276 */ :
+    %v176 /* 670, uses: 2 */ = iconst 0x20i32 : i32
+    %v175 /* 667, uses: 4 */ = iconst 0xai32 : i32
+    /* no result */ jump ^bb49(%v86)
+
+^while.exit_13 /* 80 */ :
+    %v98 /* 518, uses: 1 */ = add %v72, %v97 : i32
+    /* no result */ jump ^while.entry_12(%v98)
+
+^while.body_13 /* 81 */ :
+    %v94 /* 512, uses: 1 */ = call @getfloat() : f32
+    %v23 /* 58, uses: 1 */ = shl %v71, %v27 : i32
+    %v92 /* 510, uses: 1 */ = add %v30, %v23 : i32
+    %v93 /* 511, uses: 1 */ = offset %v100, %v92 : ptr
+    /* no result */ store %v94, %v93
+    %v96 /* 515, uses: 1 */ = add %v71, %v97 : i32
+    /* no result */ jump ^while.entry_13(%v96)
+
+^bb9 /* 201 */ (%v76: i32 /* 399, no.0 */, %v7: i32 /* 400, no.1 */, %v8: i32 /* 201, no.2 */):
+    %v105 /* 540, uses: 1 */ = icmp.slt %v76, %v84 : i1
+    /* no result */ br %v105, ^bb10, ^bb47
+
+^bb49 /* 277 */ (%v173: i32 /* 664, no.0 */):
+    %v177 /* 672, uses: 1 */ = icmp.slt %v173, %v82 : i1
+    /* no result */ br %v177, ^bb50, ^bb54
+
+^bb10 /* 202 */ :
+    %v107 /* 545, uses: 1 */ = shl %v76, %v27 : i32
+    %v89 /* 497, uses: 1 */ = add %v102, %v107 : i32
+    %v91 /* 501, uses: 3 */ = offset %v99, %v89 : ptr
+    /* no result */ store %v108, %v91
+    %v95 /* 514, uses: 1 */ = sitofp %v76 : f32
+    /* no result */ jump ^bb11(%v7, %v86)
+
+^bb47 /* 273 */ :
+    %v172 /* 663, uses: 1 */ = add %v74, %v97 : i32
+    /* no result */ jump ^bb7(%v7, %v172, %v8)
+
+^bb50 /* 278 */ :
+    %v178 /* 673, uses: 2 */ = shl %v173, %v29 : i32
+    %v179 /* 674, uses: 1 */ = offset %v99, %v178 : ptr
+    %v180 /* 675, uses: 1 */ = load %v179 : f32
+    /* no result */ call @putfloat(%v180)
+    /* no result */ jump ^bb51(%v97)
+
+^bb54 /* 282 */ :
+    /* no result */ call @putch(%v175)
+    %v212 /* 717, uses: 2 */ = fconst 0x40000000 : f32
+    %v211 /* 716, uses: 1 */ = fconst 0x3e800000 : f32
+    %v210 /* 711, uses: 1 */ = undef : i32
+    %v209 /* 710, uses: 1 */ = undef : i32
+    %v103 /* 532, uses: 3 */ = get_global @__GLOBAL_VAR_test_idct : ptr
+    /* no result */ jump ^bb55(%v209, %v210, %v86)
+
+^bb11 /* 203 */ (%v2: i32 /* 343, no.0 */, %v3: i32 /* 344, no.1 */):
+    %v24 /* 59, uses: 1 */ = icmp.slt %v3, %v82 : i1
+    /* no result */ br %v24, ^bb12, ^bb46
+
+^bb51 /* 279 */ (%v174: i32 /* 665, no.0 */):
+    %v181 /* 676, uses: 1 */ = icmp.slt %v174, %v84 : i1
+    /* no result */ br %v181, ^bb52, ^bb53
+
+^bb55 /* 285 */ (%v188: i32 /* 683, no.0 */, %v189: i32 /* 684, no.1 */, %v190: i32 /* 685, no.2 */):
+    %v213 /* 724, uses: 1 */ = icmp.slt %v190, %v82 : i1
+    /* no result */ br %v213, ^bb56, ^bb1(%v86)
+
+^bb46 /* 272 */ :
+    %v171 /* 662, uses: 1 */ = add %v76, %v97 : i32
+    /* no result */ jump ^bb9(%v171, %v2, %v3)
+
+^bb12 /* 204 */ :
+    %v26 /* 72, uses: 1 */ = sitofp %v3 : f32
+    %v28 /* 78, uses: 1 */ = fadd %v26, %v55 : f32
+    %v45 /* 133, uses: 1 */ = fmul %v54, %v28 : f32
+    %v47 /* 135, uses: 1 */ = fmul %v45, %v104 : f32
+    %v11 /* 18, uses: 5 */ = fadd %v47, %v253 : f32
+    %v58 /* 219, uses: 1 */ = fdiv %v11, %v255 : f32
+    %v59 /* 233, uses: 1 */ = fptosi %v58 : i32
+    // depth=1
+%v101 /* 524, uses: 1 */ = sitofp %v59 : f32
+    %v67 /* 335, uses: 1 */ = fmul %v101, %v255 : f32
+    %v75 /* 391, uses: 1 */ = fsub %v11, %v67 : f32
+    %v70 /* 365, uses: 1 */ = fcmp.ult %v11, %v258 : i1
+    %v66 /* 320, uses: 1 */ = fcmp.ult %v255, %v11 : i1
+    %v25 /* 65, uses: 1 */ = shl %v3, %v29 : i32
+    /* no result */ jump ^bb13(%v86)
+
+^bb53 /* 281 */ :
+    /* no result */ call @putch(%v175)
+    %v187 /* 682, uses: 1 */ = add %v173, %v97 : i32
+    /* no result */ jump ^bb49(%v187)
+
+^bb52 /* 280 */ :
+    /* no result */ call @putch(%v176)
+    %v182 /* 677, uses: 1 */ = shl %v174, %v27 : i32
+    %v183 /* 678, uses: 1 */ = add %v178, %v182 : i32
+    %v184 /* 679, uses: 1 */ = offset %v99, %v183 : ptr
+    %v185 /* 680, uses: 1 */ = load %v184 : f32
+    /* no result */ call @putfloat(%v185)
+    %v186 /* 681, uses: 1 */ = add %v174, %v97 : i32
+    /* no result */ jump ^bb51(%v186)
+
+^bb1 /* 369 */ (%v337: i32 /* 884, no.0 */):
+    %v339 /* 892, uses: 1 */ = icmp.slt %v337, %v82 : i1
+    /* no result */ br %v339, ^bb100, ^bb104
+
+^bb56 /* 286 */ :
+    %v215 /* 726, uses: 1 */ = sitofp %v190 : f32
+    %v216 /* 727, uses: 1 */ = fadd %v215, %v55 : f32
+    %v217 /* 728, uses: 1 */ = fmul %v54, %v216 : f32
+    %v214 /* 725, uses: 1 */ = shl %v190, %v29 : i32
+    /* no result */ jump ^bb57(%v188, %v189, %v86)
+
+^bb13 /* 205 */ (%v0: i32 /* 222, no.0 */):
+    %v20 /* 47, uses: 1 */ = icmp.slt %v0, %v84 : i1
+    /* no result */ br %v20, ^bb14, ^bb45
+
+^bb100 /* 370 */ :
+    %v340 /* 893, uses: 2 */ = shl %v337, %v29 : i32
+    %v341 /* 894, uses: 1 */ = offset %v103, %v340 : ptr
+    %v342 /* 895, uses: 1 */ = load %v341 : f32
+    /* no result */ call @putfloat(%v342)
+    /* no result */ jump ^bb101(%v97)
+
+^bb57 /* 287 */ (%v9: i32 /* 686, no.0 */, %v10: i32 /* 687, no.1 */, %v191: i32 /* 688, no.2 */):
+    %v218 /* 729, uses: 1 */ = icmp.slt %v191, %v84 : i1
+    /* no result */ br %v218, ^bb58, ^bb99
+
+^bb14 /* 206 */ :
+    %v44 /* 131, uses: 1 */ = load %v91 : f32
+    %v19 /* 46, uses: 1 */ = shl %v0, %v27 : i32
+    %v12 /* 35, uses: 1 */ = add %v25, %v19 : i32
+    %v18 /* 43, uses: 1 */ = offset %v100, %v12 : ptr
+    %v77 /* 425, uses: 1 */ = load %v18 : f32
+    /* no result */ br %v66, ^bb15(%v257), ^bb15(%v70)
+
+^bb45 /* 271 */ :
+    %v170 /* 661, uses: 1 */ = add %v3, %v97 : i32
+    /* no result */ jump ^bb11(%v0, %v170)
+
+^bb101 /* 371 */ (%v338: i32 /* 885, no.0 */):
+    %v343 /* 896, uses: 1 */ = icmp.slt %v338, %v84 : i1
+    /* no result */ br %v343, ^bb102, ^bb103
+
+^bb99 /* 365 */ :
+    %v336 /* 883, uses: 1 */ = add %v190, %v97 : i32
+    /* no result */ jump ^bb55(%v9, %v10, %v336)
+
+^bb58 /* 288 */ :
+    %v219 /* 730, uses: 1 */ = load %v99 : f32
+    %v223 /* 734, uses: 1 */ = fmul %v219, %v211 : f32
+    %v220 /* 731, uses: 1 */ = shl %v191, %v27 : i32
+    %v221 /* 732, uses: 1 */ = add %v214, %v220 : i32
+    %v222 /* 733, uses: 9 */ = offset %v103, %v221 : ptr
+    /* no result */ store %v223, %v222
+    /* no result */ jump ^bb59(%v97)
+
+^bb15 /* 210 */ (%v68: i1 /* 353, no.0 */):
+    // depth=1
+/* no result */ br %v68, ^bb16(%v75), ^bb16(%v11)
+
+^bb102 /* 372 */ :
+    /* no result */ call @putch(%v176)
+    %v344 /* 897, uses: 1 */ = shl %v338, %v27 : i32
+    %v345 /* 898, uses: 1 */ = add %v340, %v344 : i32
+    %v346 /* 899, uses: 1 */ = offset %v103, %v345 : ptr
+    %v347 /* 900, uses: 1 */ = load %v346 : f32
+    /* no result */ call @putfloat(%v347)
+    %v348 /* 901, uses: 1 */ = add %v338, %v97 : i32
+    /* no result */ jump ^bb101(%v348)
+
+^bb103 /* 373 */ :
+    /* no result */ call @putch(%v175)
+    %v349 /* 902, uses: 1 */ = add %v337, %v97 : i32
+    /* no result */ jump ^bb1(%v349)
+
+^bb59 /* 289 */ (%v192: i32 /* 689, no.0 */):
+    %v224 /* 735, uses: 1 */ = icmp.slt %v192, %v82 : i1
+    /* no result */ br %v224, ^bb60, ^bb0(%v97)
+
+^bb16 /* 212 */ (%v69: f32 /* 354, no.0 */):
+    // depth=1
+%v79 /* 446, uses: 1 */ = fcmp.ult %v85, %v69 : i1
+    /* no result */ br %v79, ^bb17, ^bb18(%v69)
+
+^bb0 /* 292 */ (%v6: i32 /* 690, no.0 */):
+    %v232 /* 743, uses: 1 */ = icmp.slt %v6, %v84 : i1
+    /* no result */ br %v232, ^bb61, ^bb62
+
+^bb60 /* 290 */ :
+    %v225 /* 736, uses: 1 */ = load %v222 : f32
+    %v226 /* 737, uses: 1 */ = shl %v192, %v29 : i32
+    %v227 /* 738, uses: 1 */ = offset %v99, %v226 : ptr
+    %v228 /* 739, uses: 1 */ = load %v227 : f32
+    %v229 /* 740, uses: 1 */ = fmul %v228, %v55 : f32
+    %v230 /* 741, uses: 1 */ = fadd %v225, %v229 : f32
+    /* no result */ store %v230, %v222
+    %v231 /* 742, uses: 1 */ = add %v192, %v97 : i32
+    /* no result */ jump ^bb59(%v231)
+
+^bb18 /* 214 */ (%v50: f32 /* 159, no.0 */):
+    %v110 /* 563, uses: 1 */ = fcmp.ult %v50, %v267 : i1
+    /* no result */ br %v110, ^bb19, ^bb20(%v50)
+
+^bb17 /* 213 */ :
+    %v78 /* 443, uses: 1 */ = fsub %v69, %v255 : f32
+    // depth=1
+/* no result */ jump ^bb18(%v78)
+
+^bb61 /* 293 */ :
+    %v233 /* 744, uses: 1 */ = load %v222 : f32
+    %v234 /* 745, uses: 1 */ = shl %v6, %v27 : i32
+    %v235 /* 746, uses: 1 */ = offset %v99, %v234 : ptr
+    %v236 /* 747, uses: 1 */ = load %v235 : f32
+    %v237 /* 748, uses: 1 */ = fmul %v236, %v55 : f32
+    %v238 /* 749, uses: 1 */ = fadd %v233, %v237 : f32
+    /* no result */ store %v238, %v222
+    %v239 /* 750, uses: 1 */ = add %v6, %v97 : i32
+    /* no result */ jump ^bb0(%v239)
+
+^bb62 /* 294 */ :
+    %v240 /* 751, uses: 1 */ = sitofp %v191 : f32
+    %v241 /* 752, uses: 1 */ = fadd %v240, %v55 : f32
+    %v242 /* 753, uses: 1 */ = fmul %v56, %v241 : f32
+    /* no result */ jump ^bb63(%v6, %v97)
+
+^bb19 /* 215 */ :
+    %v111 /* 564, uses: 1 */ = fadd %v50, %v255 : f32
+    /* no result */ jump ^bb20(%v111)
+
+^bb20 /* 216 */ (%v62: f32 /* 301, no.0 */):
+    %v112 /* 567, uses: 1 */ = fcmp.ult %v270, %v62 : i1
+    /* no result */ br %v112, ^bb22(%v62), ^bb21
+
+^bb63 /* 295 */ (%v4: i32 /* 691, no.0 */, %v5: i32 /* 692, no.1 */):
+    %v243 /* 754, uses: 1 */ = icmp.slt %v5, %v82 : i1
+    /* no result */ br %v243, ^bb64, ^bb98
+
+^bb21 /* 219 */ :
+    %v113 /* 568, uses: 1 */ = fneg %v62 : f32
+    /* no result */ jump ^bb22(%v113)
+
+^bb22 /* 220 */ (%v63: f32 /* 302, no.0 */):
+    %v114 /* 570, uses: 1 */ = fcmp.ule %v63, %v273 : i1
+    /* no result */ br %v114, ^bb28(%v62), ^bb23
+
+^bb64 /* 296 */ :
+    %v245 /* 756, uses: 1 */ = sitofp %v5 : f32
+    %v246 /* 757, uses: 1 */ = fmul %v217, %v245 : f32
+    %v254 /* 765, uses: 5 */ = fadd %v246, %v253 : f32
+    %v260 /* 771, uses: 1 */ = fdiv %v254, %v255 : f32
+    %v261 /* 772, uses: 1 */ = fptosi %v260 : i32
+    %v262 /* 773, uses: 1 */ = sitofp %v261 : f32
+    %v263 /* 774, uses: 1 */ = fmul %v262, %v255 : f32
+    %v264 /* 775, uses: 1 */ = fsub %v254, %v263 : f32
+    %v259 /* 770, uses: 1 */ = fcmp.ult %v254, %v258 : i1
+    %v256 /* 767, uses: 1 */ = fcmp.ult %v255, %v254 : i1
+    %v244 /* 755, uses: 1 */ = shl %v5, %v29 : i32
+    /* no result */ jump ^bb65(%v97)
+
+^bb98 /* 364 */ :
+    %v330 /* 877, uses: 1 */ = load %v222 : f32
+    %v331 /* 878, uses: 1 */ = fmul %v330, %v212 : f32
+    %v332 /* 879, uses: 1 */ = fdiv %v331, %v81 : f32
+    %v333 /* 880, uses: 1 */ = fmul %v332, %v212 : f32
+    %v334 /* 881, uses: 1 */ = fdiv %v333, %v21 : f32
+    /* no result */ store %v334, %v222
+    %v335 /* 882, uses: 1 */ = add %v191, %v97 : i32
+    /* no result */ jump ^bb57(%v4, %v5, %v335)
+
+^bb23 /* 222 */ :
+    %v115 /* 572, uses: 5 */ = fdiv %v62, %v275 : f32
+    %v116 /* 575, uses: 1 */ = fcmp.ult %v270, %v115 : i1
+    /* no result */ br %v116, ^bb25(%v115), ^bb24
+
+^bb28 /* 235 */ (%v65: f32 /* 312, no.0 */):
+    %v131 /* 600, uses: 1 */ = sitofp %v0 : f32
+    %v132 /* 601, uses: 1 */ = fadd %v131, %v55 : f32
+    %v133 /* 602, uses: 1 */ = fmul %v56, %v132 : f32
+    %v134 /* 603, uses: 1 */ = fmul %v133, %v95 : f32
+    %v135 /* 605, uses: 5 */ = fadd %v134, %v253 : f32
+    %v136 /* 607, uses: 1 */ = fcmp.ult %v255, %v135 : i1
+    /* no result */ br %v136, ^bb30(%v257), ^bb29
+
+^bb65 /* 297 */ (%v1: i32 /* 693, no.0 */):
+    %v247 /* 758, uses: 1 */ = icmp.slt %v1, %v84 : i1
+    /* no result */ br %v247, ^bb66, ^bb97
+
+^bb24 /* 225 */ :
+    %v117 /* 576, uses: 1 */ = fneg %v115 : f32
+    /* no result */ jump ^bb25(%v117)
+
+^bb25 /* 226 */ (%v53: f32 /* 173, no.0 */):
+    %v118 /* 578, uses: 1 */ = fcmp.ule %v53, %v273 : i1
+    /* no result */ br %v118, ^bb27(%v115), ^bb26
+
+^bb29 /* 241 */ :
+    %v137 /* 610, uses: 1 */ = fcmp.ult %v135, %v258 : i1
+    /* no result */ jump ^bb30(%v137)
+
+^bb30 /* 242 */ (%v49: i1 /* 150, no.0 */):
+    /* no result */ br %v49, ^bb31, ^bb32(%v135)
+
+^bb66 /* 298 */ :
+    %v248 /* 759, uses: 1 */ = load %v222 : f32
+    %v249 /* 760, uses: 1 */ = shl %v1, %v27 : i32
+    %v250 /* 761, uses: 1 */ = add %v244, %v249 : i32
+    %v251 /* 762, uses: 1 */ = offset %v99, %v250 : ptr
+    %v252 /* 763, uses: 1 */ = load %v251 : f32
+    /* no result */ br %v256, ^bb67(%v257), ^bb67(%v259)
+
+^bb97 /* 363 */ :
+    %v329 /* 876, uses: 1 */ = add %v5, %v97 : i32
+    /* no result */ jump ^bb63(%v1, %v329)
+
+^bb26 /* 228 */ :
+    %v119 /* 580, uses: 5 */ = fdiv %v115, %v275 : f32
+    %v352 /* 907, uses: 1 */ = fcmp.ult %v270, %v119 : i1
+    /* no result */ br %v352, ^bb106(%v119), ^bb105
+
+^bb27 /* 231 */ (%v64: f32 /* 311, no.0 */):
+    %v127 /* 596, uses: 1 */ = fmul %v416, %v64 : f32
+    %v128 /* 597, uses: 1 */ = fmul %v127, %v64 : f32
+    %v129 /* 598, uses: 1 */ = fmul %v128, %v64 : f32
+    %v126 /* 593, uses: 1 */ = fmul %v413, %v64 : f32
+    %v130 /* 599, uses: 1 */ = fsub %v126, %v129 : f32
+    /* no result */ jump ^bb28(%v130)
+
+^bb31 /* 243 */ :
+    %v138 /* 611, uses: 1 */ = fdiv %v135, %v255 : f32
+    %v139 /* 612, uses: 1 */ = fptosi %v138 : i32
+    %v140 /* 613, uses: 1 */ = sitofp %v139 : f32
+    %v141 /* 614, uses: 1 */ = fmul %v140, %v255 : f32
+    %v142 /* 615, uses: 1 */ = fsub %v135, %v141 : f32
+    /* no result */ jump ^bb32(%v142)
+
+^bb32 /* 244 */ (%v51: f32 /* 166, no.0 */):
+    %v143 /* 617, uses: 1 */ = fcmp.ult %v85, %v51 : i1
+    /* no result */ br %v143, ^bb33, ^bb34(%v51)
+
+^bb67 /* 302 */ (%v193: i1 /* 694, no.0 */):
+    /* no result */ br %v193, ^bb68(%v264), ^bb68(%v254)
+
+^bb105 /* 378 */ :
+    %v353 /* 908, uses: 1 */ = fneg %v119 : f32
+    /* no result */ jump ^bb106(%v353)
+
+^bb106 /* 379 */ (%v350: f32 /* 903, no.0 */):
+    %v354 /* 910, uses: 1 */ = fcmp.ule %v350, %v273 : i1
+    /* no result */ br %v354, ^bb108(%v119), ^bb107
+
+^bb34 /* 246 */ (%v61: f32 /* 243, no.0 */):
+    %v145 /* 620, uses: 1 */ = fcmp.ult %v61, %v267 : i1
+    /* no result */ br %v145, ^bb35, ^bb36(%v61)
+
+^bb33 /* 245 */ :
+    %v144 /* 618, uses: 1 */ = fsub %v51, %v255 : f32
+    /* no result */ jump ^bb34(%v144)
+
+^bb68 /* 304 */ (%v194: f32 /* 695, no.0 */):
+    %v265 /* 777, uses: 1 */ = fcmp.ult %v85, %v194 : i1
+    /* no result */ br %v265, ^bb69, ^bb70(%v194)
+
+^bb107 /* 381 */ :
+    %v355 /* 912, uses: 5 */ = fdiv %v119, %v275 : f32
+    %v363 /* 926, uses: 1 */ = fcmp.ult %v270, %v355 : i1
+    /* no result */ br %v363, ^bb110(%v355), ^bb109
+
+^bb108 /* 384 */ (%v351: f32 /* 904, no.0 */):
+    %v122 /* 587, uses: 1 */ = fmul %v416, %v351 : f32
+    %v123 /* 588, uses: 1 */ = fmul %v122, %v351 : f32
+    %v124 /* 589, uses: 1 */ = fmul %v123, %v351 : f32
+    %v121 /* 584, uses: 1 */ = fmul %v413, %v351 : f32
+    %v125 /* 590, uses: 1 */ = fsub %v121, %v124 : f32
+    /* no result */ jump ^bb27(%v125)
+
+^bb35 /* 247 */ :
+    %v146 /* 621, uses: 1 */ = fadd %v61, %v255 : f32
+    /* no result */ jump ^bb36(%v146)
+
+^bb36 /* 248 */ (%v52: f32 /* 171, no.0 */):
+    %v147 /* 624, uses: 1 */ = fcmp.ult %v270, %v52 : i1
+    /* no result */ br %v147, ^bb38(%v52), ^bb37
+
+^bb69 /* 305 */ :
+    %v266 /* 778, uses: 1 */ = fsub %v194, %v255 : f32
+    /* no result */ jump ^bb70(%v266)
+
+^bb70 /* 306 */ (%v195: f32 /* 696, no.0 */):
+    %v268 /* 780, uses: 1 */ = fcmp.ult %v195, %v267 : i1
+    /* no result */ br %v268, ^bb71, ^bb72(%v195)
+
+^bb110 /* 389 */ (%v120: f32 /* 581, no.0 */):
+    %v365 /* 929, uses: 1 */ = fcmp.ule %v120, %v273 : i1
+    /* no result */ br %v365, ^bb112(%v355), ^bb111
+
+^bb109 /* 388 */ :
+    %v364 /* 927, uses: 1 */ = fneg %v355 : f32
+    /* no result */ jump ^bb110(%v364)
+
+^bb38 /* 252 */ (%v60: f32 /* 240, no.0 */):
+    %v149 /* 627, uses: 1 */ = fcmp.ule %v60, %v273 : i1
+    /* no result */ br %v149, ^bb44(%v52), ^bb39
+
+^bb37 /* 251 */ :
+    %v148 /* 625, uses: 1 */ = fneg %v52 : f32
+    /* no result */ jump ^bb38(%v148)
+
+^bb71 /* 307 */ :
+    %v269 /* 781, uses: 1 */ = fadd %v195, %v255 : f32
+    /* no result */ jump ^bb72(%v269)
+
+^bb72 /* 308 */ (%v196: f32 /* 697, no.0 */):
+    %v271 /* 784, uses: 1 */ = fcmp.ult %v270, %v196 : i1
+    /* no result */ br %v271, ^bb74(%v196), ^bb73
+
+^bb111 /* 391 */ :
+    %v366 /* 931, uses: 1 */ = fdiv %v355, %v275 : f32
+    // depth=2
+%v367 /* 932, uses: 4 */ = call @my_sin_impl(%v366) : f32
+    %v369 /* 938, uses: 1 */ = fmul %v416, %v367 : f32
+    %v370 /* 939, uses: 1 */ = fmul %v369, %v367 : f32
+    %v371 /* 940, uses: 1 */ = fmul %v370, %v367 : f32
+    %v368 /* 935, uses: 1 */ = fmul %v413, %v367 : f32
+    %v372 /* 941, uses: 1 */ = fsub %v368, %v371 : f32
+    /* no result */ jump ^bb112(%v372)
+
+^bb112 /* 394 */ (%v362: f32 /* 923, no.0 */):
+    %v358 /* 919, uses: 1 */ = fmul %v416, %v362 : f32
+    %v359 /* 920, uses: 1 */ = fmul %v358, %v362 : f32
+    %v360 /* 921, uses: 1 */ = fmul %v359, %v362 : f32
+    %v357 /* 916, uses: 1 */ = fmul %v413, %v362 : f32
+    %v361 /* 922, uses: 1 */ = fsub %v357, %v360 : f32
+    /* no result */ jump ^bb108(%v361)
+
+^bb44 /* 267 */ (%v83: f32 /* 489, no.0 */):
+    %v166 /* 657, uses: 1 */ = fmul %v77, %v65 : f32
+    %v167 /* 658, uses: 1 */ = fmul %v166, %v83 : f32
+    %v168 /* 659, uses: 1 */ = fadd %v44, %v167 : f32
+    /* no result */ store %v168, %v91
+    %v169 /* 660, uses: 1 */ = add %v0, %v97 : i32
+    /* no result */ jump ^bb13(%v169)
+
+^bb39 /* 254 */ :
+    %v150 /* 629, uses: 5 */ = fdiv %v52, %v275 : f32
+    %v151 /* 632, uses: 1 */ = fcmp.ult %v270, %v150 : i1
+    /* no result */ br %v151, ^bb41(%v150), ^bb40
+
+^bb73 /* 311 */ :
+    %v272 /* 785, uses: 1 */ = fneg %v196 : f32
+    /* no result */ jump ^bb74(%v272)
+
+^bb74 /* 312 */ (%v197: f32 /* 698, no.0 */):
+    %v274 /* 787, uses: 1 */ = fcmp.ule %v197, %v273 : i1
+    /* no result */ br %v274, ^bb80(%v196), ^bb75
+
+^bb40 /* 257 */ :
+    %v152 /* 633, uses: 1 */ = fneg %v150 : f32
+    /* no result */ jump ^bb41(%v152)
+
+^bb41 /* 258 */ (%v106: f32 /* 544, no.0 */):
+    %v153 /* 635, uses: 1 */ = fcmp.ule %v106, %v273 : i1
+    /* no result */ br %v153, ^bb43(%v150), ^bb42
+
+^bb80 /* 327 */ (%v200: f32 /* 701, no.0 */):
+    %v292 /* 817, uses: 1 */ = sitofp %v1 : f32
+    %v293 /* 818, uses: 1 */ = fmul %v242, %v292 : f32
+    %v294 /* 820, uses: 5 */ = fadd %v293, %v253 : f32
+    %v295 /* 822, uses: 1 */ = fcmp.ult %v255, %v294 : i1
+    /* no result */ br %v295, ^bb82(%v257), ^bb81
+
+^bb75 /* 314 */ :
+    %v276 /* 789, uses: 5 */ = fdiv %v196, %v275 : f32
+    %v277 /* 792, uses: 1 */ = fcmp.ult %v270, %v276 : i1
+    /* no result */ br %v277, ^bb77(%v276), ^bb76
+
+^bb42 /* 260 */ :
+    %v154 /* 637, uses: 5 */ = fdiv %v150, %v275 : f32
+    %v374 /* 945, uses: 1 */ = fcmp.ult %v270, %v154 : i1
+    /* no result */ br %v374, ^bb114(%v154), ^bb113
+
+^bb43 /* 263 */ (%v88: f32 /* 496, no.0 */):
+    %v162 /* 653, uses: 1 */ = fmul %v416, %v88 : f32
+    %v163 /* 654, uses: 1 */ = fmul %v162, %v88 : f32
+    %v164 /* 655, uses: 1 */ = fmul %v163, %v88 : f32
+    %v161 /* 650, uses: 1 */ = fmul %v413, %v88 : f32
+    %v165 /* 656, uses: 1 */ = fsub %v161, %v164 : f32
+    /* no result */ jump ^bb44(%v165)
+
+^bb81 /* 333 */ :
+    %v296 /* 825, uses: 1 */ = fcmp.ult %v294, %v258 : i1
+    /* no result */ jump ^bb82(%v296)
+
+^bb82 /* 334 */ (%v201: i1 /* 702, no.0 */):
+    /* no result */ br %v201, ^bb83, ^bb84(%v294)
+
+^bb76 /* 317 */ :
+    %v278 /* 793, uses: 1 */ = fneg %v276 : f32
+    /* no result */ jump ^bb77(%v278)
+
+^bb77 /* 318 */ (%v198: f32 /* 699, no.0 */):
+    %v279 /* 795, uses: 1 */ = fcmp.ule %v198, %v273 : i1
+    /* no result */ br %v279, ^bb79(%v276), ^bb78
+
+^bb113 /* 398 */ :
+    %v375 /* 946, uses: 1 */ = fneg %v154 : f32
+    /* no result */ jump ^bb114(%v375)
+
+^bb114 /* 399 */ (%v356: f32 /* 913, no.0 */):
+    %v376 /* 948, uses: 1 */ = fcmp.ule %v356, %v273 : i1
+    /* no result */ br %v376, ^bb116(%v154), ^bb115
+
+^bb84 /* 336 */ (%v202: f32 /* 703, no.0 */):
+    %v302 /* 832, uses: 1 */ = fcmp.ult %v85, %v202 : i1
+    /* no result */ br %v302, ^bb85, ^bb86(%v202)
+
+^bb83 /* 335 */ :
+    %v297 /* 826, uses: 1 */ = fdiv %v294, %v255 : f32
+    %v298 /* 827, uses: 1 */ = fptosi %v297 : i32
+    %v299 /* 828, uses: 1 */ = sitofp %v298 : f32
+    %v300 /* 829, uses: 1 */ = fmul %v299, %v255 : f32
+    %v301 /* 830, uses: 1 */ = fsub %v294, %v300 : f32
+    /* no result */ jump ^bb84(%v301)
+
+^bb78 /* 320 */ :
+    %v280 /* 797, uses: 5 */ = fdiv %v276, %v275 : f32
+    %v396 /* 983, uses: 1 */ = fcmp.ult %v270, %v280 : i1
+    /* no result */ br %v396, ^bb122(%v280), ^bb121
+
+^bb79 /* 323 */ (%v199: f32 /* 700, no.0 */):
+    %v288 /* 813, uses: 1 */ = fmul %v416, %v199 : f32
+    %v289 /* 814, uses: 1 */ = fmul %v288, %v199 : f32
+    %v290 /* 815, uses: 1 */ = fmul %v289, %v199 : f32
+    %v287 /* 810, uses: 1 */ = fmul %v413, %v199 : f32
+    %v291 /* 816, uses: 1 */ = fsub %v287, %v290 : f32
+    /* no result */ jump ^bb80(%v291)
+
+^bb115 /* 401 */ :
+    %v377 /* 950, uses: 5 */ = fdiv %v154, %v275 : f32
+    %v385 /* 964, uses: 1 */ = fcmp.ult %v270, %v377 : i1
+    /* no result */ br %v385, ^bb118(%v377), ^bb117
+
+^bb116 /* 404 */ (%v373: f32 /* 942, no.0 */):
+    %v157 /* 644, uses: 1 */ = fmul %v416, %v373 : f32
+    %v158 /* 645, uses: 1 */ = fmul %v157, %v373 : f32
+    %v159 /* 646, uses: 1 */ = fmul %v158, %v373 : f32
+    %v156 /* 641, uses: 1 */ = fmul %v413, %v373 : f32
+    %v160 /* 647, uses: 1 */ = fsub %v156, %v159 : f32
+    /* no result */ jump ^bb43(%v160)
+
+^bb85 /* 337 */ :
+    %v303 /* 833, uses: 1 */ = fsub %v202, %v255 : f32
+    /* no result */ jump ^bb86(%v303)
+
+^bb86 /* 338 */ (%v203: f32 /* 704, no.0 */):
+    %v304 /* 835, uses: 1 */ = fcmp.ult %v203, %v267 : i1
+    /* no result */ br %v304, ^bb87, ^bb88(%v203)
+
+^bb121 /* 418 */ :
+    %v397 /* 984, uses: 1 */ = fneg %v280 : f32
+    /* no result */ jump ^bb122(%v397)
+
+^bb122 /* 419 */ (%v378: f32 /* 951, no.0 */):
+    %v398 /* 986, uses: 1 */ = fcmp.ule %v378, %v273 : i1
+    /* no result */ br %v398, ^bb124(%v280), ^bb123
+
+^bb118 /* 409 */ (%v155: f32 /* 638, no.0 */):
+    %v387 /* 967, uses: 1 */ = fcmp.ule %v155, %v273 : i1
+    /* no result */ br %v387, ^bb120(%v377), ^bb119
+
+^bb117 /* 408 */ :
+    %v386 /* 965, uses: 1 */ = fneg %v377 : f32
+    /* no result */ jump ^bb118(%v386)
+
+^bb87 /* 339 */ :
+    %v305 /* 836, uses: 1 */ = fadd %v203, %v255 : f32
+    /* no result */ jump ^bb88(%v305)
+
+^bb88 /* 340 */ (%v204: f32 /* 705, no.0 */):
+    %v306 /* 839, uses: 1 */ = fcmp.ult %v270, %v204 : i1
+    /* no result */ br %v306, ^bb90(%v204), ^bb89
+
+^bb123 /* 421 */ :
+    %v399 /* 988, uses: 5 */ = fdiv %v280, %v275 : f32
+    %v407 /* 1002, uses: 1 */ = fcmp.ult %v270, %v399 : i1
+    /* no result */ br %v407, ^bb126(%v399), ^bb125
+
+^bb124 /* 424 */ (%v395: f32 /* 980, no.0 */):
+    %v283 /* 804, uses: 1 */ = fmul %v416, %v395 : f32
+    %v284 /* 805, uses: 1 */ = fmul %v283, %v395 : f32
+    %v285 /* 806, uses: 1 */ = fmul %v284, %v395 : f32
+    %v282 /* 801, uses: 1 */ = fmul %v413, %v395 : f32
+    %v286 /* 807, uses: 1 */ = fsub %v282, %v285 : f32
+    /* no result */ jump ^bb79(%v286)
+
+^bb119 /* 411 */ :
+    %v388 /* 969, uses: 1 */ = fdiv %v377, %v275 : f32
+    // depth=2
+%v389 /* 970, uses: 4 */ = call @my_sin_impl(%v388) : f32
+    %v391 /* 976, uses: 1 */ = fmul %v416, %v389 : f32
+    %v392 /* 977, uses: 1 */ = fmul %v391, %v389 : f32
+    %v393 /* 978, uses: 1 */ = fmul %v392, %v389 : f32
+    %v390 /* 973, uses: 1 */ = fmul %v413, %v389 : f32
+    %v394 /* 979, uses: 1 */ = fsub %v390, %v393 : f32
+    /* no result */ jump ^bb120(%v394)
+
+^bb120 /* 414 */ (%v384: f32 /* 961, no.0 */):
+    %v380 /* 957, uses: 1 */ = fmul %v416, %v384 : f32
+    %v381 /* 958, uses: 1 */ = fmul %v380, %v384 : f32
+    %v382 /* 959, uses: 1 */ = fmul %v381, %v384 : f32
+    %v379 /* 954, uses: 1 */ = fmul %v413, %v384 : f32
+    %v383 /* 960, uses: 1 */ = fsub %v379, %v382 : f32
+    /* no result */ jump ^bb116(%v383)
+
+^bb89 /* 343 */ :
+    %v307 /* 840, uses: 1 */ = fneg %v204 : f32
+    /* no result */ jump ^bb90(%v307)
+
+^bb90 /* 344 */ (%v205: f32 /* 706, no.0 */):
+    %v308 /* 842, uses: 1 */ = fcmp.ule %v205, %v273 : i1
+    /* no result */ br %v308, ^bb96(%v204), ^bb91
+
+^bb125 /* 428 */ :
+    %v408 /* 1003, uses: 1 */ = fneg %v399 : f32
+    /* no result */ jump ^bb126(%v408)
+
+^bb126 /* 429 */ (%v281: f32 /* 798, no.0 */):
+    %v409 /* 1005, uses: 1 */ = fcmp.ule %v281, %v273 : i1
+    /* no result */ br %v409, ^bb128(%v399), ^bb127
+
+^bb91 /* 346 */ :
+    %v309 /* 844, uses: 5 */ = fdiv %v204, %v275 : f32
+    %v310 /* 847, uses: 1 */ = fcmp.ult %v270, %v309 : i1
+    /* no result */ br %v310, ^bb93(%v309), ^bb92
+
+^bb96 /* 359 */ (%v208: f32 /* 709, no.0 */):
+    %v325 /* 872, uses: 1 */ = fmul %v252, %v200 : f32
+    %v326 /* 873, uses: 1 */ = fmul %v325, %v208 : f32
+    %v327 /* 874, uses: 1 */ = fadd %v248, %v326 : f32
+    /* no result */ store %v327, %v222
+    %v328 /* 875, uses: 1 */ = add %v1, %v97 : i32
+    /* no result */ jump ^bb65(%v328)
+
+^bb127 /* 431 */ :
+    %v410 /* 1007, uses: 1 */ = fdiv %v399, %v275 : f32
+    // depth=2
+%v411 /* 1008, uses: 4 */ = call @my_sin_impl(%v410) : f32
+    %v417 /* 1014, uses: 1 */ = fmul %v416, %v411 : f32
+    %v418 /* 1015, uses: 1 */ = fmul %v417, %v411 : f32
+    %v419 /* 1016, uses: 1 */ = fmul %v418, %v411 : f32
+    %v414 /* 1011, uses: 1 */ = fmul %v413, %v411 : f32
+    %v420 /* 1017, uses: 1 */ = fsub %v414, %v419 : f32
+    /* no result */ jump ^bb128(%v420)
+
+^bb128 /* 434 */ (%v406: f32 /* 999, no.0 */):
+    %v402 /* 995, uses: 1 */ = fmul %v416, %v406 : f32
+    %v403 /* 996, uses: 1 */ = fmul %v402, %v406 : f32
+    %v404 /* 997, uses: 1 */ = fmul %v403, %v406 : f32
+    %v401 /* 992, uses: 1 */ = fmul %v413, %v406 : f32
+    %v405 /* 998, uses: 1 */ = fsub %v401, %v404 : f32
+    /* no result */ jump ^bb124(%v405)
+
+^bb92 /* 349 */ :
+    %v311 /* 848, uses: 1 */ = fneg %v309 : f32
+    /* no result */ jump ^bb93(%v311)
+
+^bb93 /* 350 */ (%v206: f32 /* 707, no.0 */):
+    %v312 /* 850, uses: 1 */ = fcmp.ule %v206, %v273 : i1
+    /* no result */ br %v312, ^bb95(%v309), ^bb94
+
+^bb94 /* 352 */ :
+    %v313 /* 852, uses: 5 */ = fdiv %v309, %v275 : f32
+    %v422 /* 1021, uses: 1 */ = fcmp.ult %v270, %v313 : i1
+    /* no result */ br %v422, ^bb130(%v313), ^bb129
+
+^bb95 /* 355 */ (%v207: f32 /* 708, no.0 */):
+    %v321 /* 868, uses: 1 */ = fmul %v416, %v207 : f32
+    %v322 /* 869, uses: 1 */ = fmul %v321, %v207 : f32
+    %v323 /* 870, uses: 1 */ = fmul %v322, %v207 : f32
+    %v320 /* 865, uses: 1 */ = fmul %v413, %v207 : f32
+    %v324 /* 871, uses: 1 */ = fsub %v320, %v323 : f32
+    /* no result */ jump ^bb96(%v324)
+
+^bb129 /* 438 */ :
+    %v423 /* 1022, uses: 1 */ = fneg %v313 : f32
+    /* no result */ jump ^bb130(%v423)
+
+^bb130 /* 439 */ (%v400: f32 /* 989, no.0 */):
+    %v424 /* 1024, uses: 1 */ = fcmp.ule %v400, %v273 : i1
+    /* no result */ br %v424, ^bb132(%v313), ^bb131
+
+^bb131 /* 441 */ :
+    %v425 /* 1026, uses: 5 */ = fdiv %v313, %v275 : f32
+    %v432 /* 1040, uses: 1 */ = fcmp.ult %v270, %v425 : i1
+    /* no result */ br %v432, ^bb134(%v425), ^bb133
+
+^bb132 /* 444 */ (%v421: f32 /* 1018, no.0 */):
+    %v316 /* 859, uses: 1 */ = fmul %v416, %v421 : f32
+    %v317 /* 860, uses: 1 */ = fmul %v316, %v421 : f32
+    %v318 /* 861, uses: 1 */ = fmul %v317, %v421 : f32
+    %v315 /* 856, uses: 1 */ = fmul %v413, %v421 : f32
+    %v319 /* 862, uses: 1 */ = fsub %v315, %v318 : f32
+    /* no result */ jump ^bb95(%v319)
+
+^bb133 /* 448 */ :
+    %v433 /* 1041, uses: 1 */ = fneg %v425 : f32
+    /* no result */ jump ^bb134(%v433)
+
+^bb134 /* 449 */ (%v314: f32 /* 853, no.0 */):
+    %v434 /* 1043, uses: 1 */ = fcmp.ule %v314, %v273 : i1
+    /* no result */ br %v434, ^bb136(%v425), ^bb135
+
+^bb135 /* 451 */ :
+    %v435 /* 1045, uses: 1 */ = fdiv %v425, %v275 : f32
+    // depth=2
+%v436 /* 1046, uses: 4 */ = call @my_sin_impl(%v435) : f32
+    %v438 /* 1052, uses: 1 */ = fmul %v416, %v436 : f32
+    %v439 /* 1053, uses: 1 */ = fmul %v438, %v436 : f32
+    %v440 /* 1054, uses: 1 */ = fmul %v439, %v436 : f32
+    %v437 /* 1049, uses: 1 */ = fmul %v413, %v436 : f32
+    %v441 /* 1055, uses: 1 */ = fsub %v437, %v440 : f32
+    /* no result */ jump ^bb136(%v441)
+
+^bb136 /* 454 */ (%v431: f32 /* 1037, no.0 */):
+    %v427 /* 1033, uses: 1 */ = fmul %v416, %v431 : f32
+    %v428 /* 1034, uses: 1 */ = fmul %v427, %v431 : f32
+    %v429 /* 1035, uses: 1 */ = fmul %v428, %v431 : f32
+    %v426 /* 1030, uses: 1 */ = fmul %v413, %v431 : f32
+    %v430 /* 1036, uses: 1 */ = fsub %v426, %v429 : f32
+    /* no result */ jump ^bb132(%v430)
+
+^bb104 /* 374 */ :
+    /* no result */ call @putch(%v175)
+    /* no result */ ret %v86
+
+}

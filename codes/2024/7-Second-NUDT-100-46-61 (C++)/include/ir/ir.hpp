@@ -1,0 +1,12 @@
+#pragma once
+#include "../../include/ir/builder.hpp"
+#include "../../include/ir/constant.hpp"
+#include "../../include/ir/function.hpp"
+#include "../../include/ir/global.hpp"
+#include "../../include/ir/infrast.hpp"
+#include "../../include/ir/instructions.hpp"
+#include "../../include/ir/module.hpp"
+#include "../../include/ir/symboltable.hpp"
+#include "../../include/ir/type.hpp"
+#include "../../include/support/utils.hpp"
+#include "../../include/ir/value.hpp"

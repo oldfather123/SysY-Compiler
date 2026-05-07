@@ -1,0 +1,22 @@
+// Just a test function
+func @test /* 0 */ () -> void {
+^bb0 /* 0 */ :
+    %v0 /* 2, uses: 4 */ = iconst 0x1i32 : i32
+    %v1 /* 3, uses: 2 */ = fconst 0x40000000 : f32
+    %dummy_cond /* 4, uses: 1 */ = iconst 0x1i1 : i1
+    /* no result */ br %dummy_cond, ^bb1, ^bb2
+
+^bb1 /* 1 */ :
+    %v2 /* 5, uses: 1 */ = add %v0, %v0 : i32
+    /* no result */ jump ^merge(%v2, %v1)
+
+^bb2 /* 2 */ :
+    %v3 /* 6, uses: 1 */ = mul %v0, %v0 : i32
+    /* no result */ jump ^merge(%v3, %v1)
+
+^merge /* 3 */ (%p1: i32 /* 0, no.0 */, %p2: f32 /* 1, no.1 */):
+    %v4 /* 7, uses: 0 */ = add %p1, %p1 : i32
+    /* no result */ ret void
+
+} /* Just a test function comment at end */
+// Just a test function comment after

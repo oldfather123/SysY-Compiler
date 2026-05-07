@@ -1,0 +1,16 @@
+build/
+.cache/
+.VSCodeCounter/
+tests/functional
+tests/performance
+tests/hidden_functional
+tests/final_performance
+tests/output
+tests/testdata
+output/
+*log.txt
+/tests/log/*
+!/tests/log/compare.ipynb
+tests/test_stu
+.clangd
+.vscode/
