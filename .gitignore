@@ -14,9 +14,7 @@ cmake_install.cmake
 compile_commands.json
 
 # Compiler binaries and artifacts
-*.o
 *.obj
-*.so
 *.so.*
 *.dll
 *.dylib
