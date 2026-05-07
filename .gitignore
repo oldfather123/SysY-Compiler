@@ -1,0 +1,42 @@
+# Local agent/tool state
+/.agents/
+/.codex/
+
+# Nested git metadata that should not be committed
+docs/compiler2026/.git/
+docs/discussion/.git/
+
+# Build outputs
+/build/
+/src/build/
+/cmake-build-*/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# Compiler binaries and artifacts
+*.o
+*.obj
+*.so
+*.so.*
+*.dll
+*.dylib
+*.exe
+
+# Generated project outputs
+/src/test_output/
+
+# IDE and editor files
+.idea/
+.vscode/
+.vscode-*
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
