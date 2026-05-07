@@ -1,0 +1,147 @@
+#include <llvm_ir/ir_builder.h>
+#include <llvm_ir/defs.h>
+#include <common/type/symtab/semantic_table.h>
+#include <common/type/symtab/symbol_table.h>
+using namespace std;
+using namespace LLVMIR;
+
+using DT = DataType;
+
+IRTable::IRTable() : symTab(nullptr), regMap({}), formalArrTab({}) {}
+
+IR::IR() : global_def({}), function_declare({}), functions({}), cur_func(nullptr) {}
+IR::~IR()
+{
+    for (auto& inst : global_def)
+    {
+        delete inst;
+        inst = nullptr;
+    }
+    for (auto& inst : function_declare)
+    {
+        delete inst;
+        inst = nullptr;
+    }
+    for (auto& func : functions)
+    {
+        delete func;
+        func = nullptr;
+    }
+    /*
+    for (auto it = function_block_map.begin(); it != function_block_map.end(); ++it)
+    {
+        FuncDefInst* func   = it->first;
+        auto&        blocks = it->second;
+        delete func;
+        func = nullptr;
+        for (auto& [label, block] : blocks)
+        {
+            delete block;
+            block = nullptr;
+        }
+    }
+    */
+}
+
+void IR::registerLibraryFunctions()
+{
+    static bool registered = false;
+    if (registered) return;
+
+    // int getint();
+    function_declare.emplace_back(new FuncDeclareInst(DT::I32, "getint"));
+
+    // int getch();
+    function_declare.emplace_back(new FuncDeclareInst(DT::I32, "getch"));
+
+    // int getarray(int a[]);
+    function_declare.emplace_back(new FuncDeclareInst(DT::I32, "getarray", {DT::PTR}));
+
+    // float getfloat();
+    function_declare.emplace_back(new FuncDeclareInst(DT::F32, "getfloat"));
+
+    // int getfarray(float a[]);
+    function_declare.emplace_back(new FuncDeclareInst(DT::I32, "getfarray", {DT::PTR}));
+
+    // void putint(int a);
+    function_declare.emplace_back(new FuncDeclareInst(DT::VOID, "putint", {DT::I32}));
+
+    // void putch(int a);
+    function_declare.emplace_back(new FuncDeclareInst(DT::VOID, "putch", {DT::I32}));
+
+    // void putarray(int n, int a[]);
+    function_declare.emplace_back(new FuncDeclareInst(DT::VOID, "putarray", {DT::I32, DT::PTR}));
+
+    // void putfloat(float a);
+    function_declare.emplace_back(new FuncDeclareInst(DT::VOID, "putfloat", {DT::F32}));
+
+    // void putfarray(int n, float a[]);
+    function_declare.emplace_back(new FuncDeclareInst(DT::VOID, "putfarray", {DT::I32, DT::PTR}));
+
+    // void starttime(int lineno);
+    function_declare.emplace_back(new FuncDeclareInst(DT::VOID, "_sysy_starttime", {DT::I32}));
+
+    // void stoptime(int lineno);
+    function_declare.emplace_back(new FuncDeclareInst(DT::VOID, "_sysy_stoptime", {DT::I32}));
+
+    // llvm memset
+    function_declare.emplace_back(
+        new FuncDeclareInst(DT::VOID, "llvm.memset.p0.i32", {DT::PTR, DT::I8, DT::I32, DT::I1}));
+
+    registered = true;
+}
+
+void IR::enterFunc(IRFunction* func)
+{
+    cur_func = func;
+    functions.push_back(func);
+}
+
+IRBlock* IR::createBlock() { return cur_func->createBlock(); }
+IRBlock* IR::getBlock(int label) { return cur_func->getBlock(label); }
+
+void IR::printIR(ostream& s)
+{
+    for (auto& inst : function_declare) inst->printIR(s);
+
+    s << "\n";
+
+    for (auto& inst : global_def) inst->printIR(s);
+
+    s << "\n";
+
+    for (auto& func : functions)
+    {
+        func->func_def->printIR(s);
+
+        s << "{\n";
+        for (auto& block : func->blocks) block->printIR(s);
+        s << "}\n";
+
+        if (func != functions.back()) s << "\n";
+    }
+}
+
+void IR::BuildLoopInfo()
+{
+    // This method is now deprecated and does nothing
+    // Loop analysis should be done using LoopAnalysisPass
+    // This is kept for backward compatibility
+}
+
+// 代码优化 分析pass 构建CFG 为当前IR中的每一个函数创建CFG 并维护函数def到CFG的映射
+//  void IR::BuildCFG(){
+//  //std::map<FuncDefInst*,CFG*> cfg;
+//      for(auto func:functions){
+
+//         CFG* new_cfg= new CFG;
+//         cfg[func->func_def]=new_cfg;
+
+//         new_cfg->func=func;
+//         for(auto block:func->blocks){
+//             new_cfg->block_id_to_block[block->block_id]=block;
+//         }
+//         new_cfg->BuildCFG();
+
+//     }
+// }

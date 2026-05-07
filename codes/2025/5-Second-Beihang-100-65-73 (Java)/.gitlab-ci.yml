@@ -1,0 +1,58 @@
+image: yez_compiler:latest
+
+stages:
+  - build
+  - smoke
+  - compile-sy
+  - ll-test
+
+
+build-jar:
+  stage: build
+  tags:
+    - yez
+  script:
+    - bash scripts/build.sh
+  artifacts:
+    paths:
+      - build/app.jar
+    expire_in: 1 week
+    when: always
+
+smoke-test:
+  stage: smoke
+  tags:
+    - yez
+  dependencies:
+    - build-jar
+  script:
+    - bash scripts/smoke_test.sh
+
+compile-sy:
+  stage: compile-sy
+  tags:
+    - yez
+  dependencies:
+    - smoke-test
+  script:
+    - bash scripts/compile_sy.sh
+  artifacts:
+    name: "compiled-ll"
+    paths:
+      - artifacts/
+      - log4geneTest.txt
+    expire_in: 1 day
+    when: always
+
+clang-ll-test:
+  stage: ll-test
+  tags:
+    - yez
+  script:
+    - bash scripts/ll_test.sh
+  artifacts:
+    name: "ll-test-artifacts"
+    paths:
+      - run_results/
+    expire_in: 1 day
+    when: always

@@ -1,0 +1,46 @@
+// class AddAssignNode:public AssignNode,
+//                     public Createable<AddAssignNode>{
+// public:
+//   AddAssignNode(std::shared_ptr<sym::Var> var,OperandList operands):
+//     AssignNode(OpCode::Add,var,operands){}
+  
+// };
+#ifndef DEF_ASSIGN_NODE
+#define DEF_ASSIGN_NODE(classname, opcode, numop,ivariant,fvariant)
+#endif // DEF_ASSIGN_NODE
+DEF_ASSIGN_NODE(Add,Add,2,Add32,FloatAdd)
+DEF_ASSIGN_NODE(Sub,Sub,2,Sub,FloatSub)
+DEF_ASSIGN_NODE(Mul,Mul,2,Mul32,FloatMul)
+DEF_ASSIGN_NODE(Div,Div,2,Div,FloatDiv)
+DEF_ASSIGN_NODE(Mod,Mod,2,Mod,Mod)
+DEF_ASSIGN_NODE(Copy,Assign,1,Assign,Assign)
+DEF_ASSIGN_NODE(Negate,Negate,1,Negate,FloatNegate)
+DEF_ASSIGN_NODE(LShift,LShift,2,LShift,LShift)
+DEF_ASSIGN_NODE(RShift,RShift,2,RShift,RShift)
+DEF_ASSIGN_NODE(BitOr,BitOr,2,BitOr,BitOr)
+DEF_ASSIGN_NODE(BitAnd,BitAnd,2,BitAnd,BitAnd)
+DEF_ASSIGN_NODE(BitXor,BitXor,2,BitXor,BitXor)
+DEF_ASSIGN_NODE(BitNot,BitNot,1,BitNot,BitNot)
+DEF_ASSIGN_NODE(ICst,Interger_cst,1,Int2Float,Int2Float)
+DEF_ASSIGN_NODE(FCst,Float_cst,1,Float2Int,Float2Int)
+DEF_ASSIGN_NODE(AddressOf,AddressOf,1,AddressOf,AddressOf)
+DEF_ASSIGN_NODE(Eq,Eq,2,Eq,Eq)
+DEF_ASSIGN_NODE(Neq,Neq,2,Neq,Neq)
+DEF_ASSIGN_NODE(Leq,Leq,2,Leq,Leq)
+DEF_ASSIGN_NODE(Lt,Lt,2,Lt,Lt)
+DEF_ASSIGN_NODE(Geq,Geq,2,Geq,Geq)
+DEF_ASSIGN_NODE(Gt,Gt,2,Gt,Gt)
+DEF_ASSIGN_NODE(LogNot,LogNot,1,LogNot,LogNot)
+#undef DEF_ASSIGN_NODE
+
+#ifndef DEF_CONDITION_NODE
+#define DEF_CONDITION_NODE(classname, opcode, numop,backendOp)
+#endif // DEF_CONDITION_NODE
+DEF_CONDITION_NODE(Eq,Eq,2,Eq)
+DEF_CONDITION_NODE(Neq,Neq,2,Neq)
+DEF_CONDITION_NODE(Leq, Leq, 2,Leq)
+DEF_CONDITION_NODE(Lt, Lt, 2,Lt)
+DEF_CONDITION_NODE(Geq, Geq, 2,Geq)
+DEF_CONDITION_NODE(Gt, Gt, 2,Gt)
+DEF_CONDITION_NODE(LogNot, LogNot, 2,LogNot)
+#undef DEF_CONDITION_NODE

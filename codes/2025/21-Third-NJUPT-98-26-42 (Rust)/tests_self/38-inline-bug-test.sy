@@ -1,0 +1,41 @@
+// B: 一个在IR中返回多个值 (i32, token) 的函数。
+// 因为它从作为指针传递的数组中读取数据，所以会涉及内存token。
+int peek_val(int arr[]) {
+  // arr[0] 被用作栈的“大小”或“指针”。
+  // 这个数组读取操作使得函数在IR层面需要处理内存token。
+  return arr[arr[0]];
+}
+
+// 一个辅助函数，用于设置 peek_val() 的执行条件。
+void push_val(int arr[], int val) {
+  arr[0] = arr[0] + 1; // 增加“大小”
+  arr[arr[0]] = val;   // 在新的顶部放入值
+}
+
+// A: 将被内联到 main 函数中的函数。
+// 它的返回语句是对 B (peek_val) 的调用，这正是导致bug的模式。
+int func_to_inline() {
+  int local_array[10] = {0}; // 一个本地数组，用作简易栈。
+
+  // 推入一个值，以便 peek_val() 可以读取它。
+  // 期望最终程序输出 123。
+  push_val(local_array, 123);
+
+  // 关键部分：直接返回另一个函数的调用结果。
+  // `peek_val` 在IR上返回 (i32, token)。
+  // 内联器需要将这个双返回值正确处理，只把 i32 结果传递给 main。
+  return peek_val(local_array);
+}
+
+// main 函数，内联在此处发生。
+int main() {
+  // 对 func_to_inline() 的调用将被其函数体替换。
+  // `return peek_val(...)` 这部分会被内联。
+  // Bug就发生在内联器试图处理来自内联后 peek_val 的 (i32, token) 返回值，
+  // 并将这两个值都传递给 putint 时，导致参数数量不匹配。
+  int result = func_to_inline();
+
+  putint(result); // 期望输出 123
+  putch(10);
+  return 0;
+}

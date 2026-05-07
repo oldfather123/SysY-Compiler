@@ -1,0 +1,7 @@
+add_subdirectory(codegen)
+add_subdirectory(common)
+add_subdirectory(compiler)
+add_subdirectory(io)
+add_subdirectory(ir)
+add_subdirectory(parser)
+add_subdirectory(passes)

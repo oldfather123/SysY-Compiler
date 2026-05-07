@@ -1,0 +1,93 @@
+// 全局数组，用于测试内存状态的跟踪
+int g_array[4][4];
+
+// 这个函数是测试的核心，用于验证内存模型和数组切片（别名）
+// 它接收两个指向 g_array 不同部分的指针（切片）
+// p_2d: 一个指向包含4个整数的数组的指针 (例如 g_array[0])
+// p_1d: 一个指向单个整数的指针 (例如 g_array[1][0])
+int update_and_read_slices(int p_2d[][4], int p_1d[]) {
+    // 1. 从一个切片读取
+    //    这会消耗一个内存令牌，证明读取时内存的合法状态
+    int val_before = p_1d[1]; // 读取 g_array[1][1]
+
+    // 2. 写入另一个切片
+    //    这个操作依赖于上面的读取结果，强制了执行顺序
+    //    一个正确的内存模型必须生成一个新的内存令牌来代表这次写入后的新状态
+    p_2d[0][2] = val_before + 5; // 写入 g_array[0][2]
+
+    // 3. 读取刚刚写入的位置，验证写入是否成功
+    //    这次读取必须消耗上一步操作产生的新令牌
+    int val_after = p_2d[0][2];
+
+    // 返回一个结果，防止优化器将计算完全移除
+    return val_after;
+}
+
+int main() {
+    // 初始化全局数组，测试初始的顺序写入
+    int i = 0;
+    while (i < 4) {
+        int j = 0;
+        while (j < 4) {
+            // 每次写入都应产生一个新的 g_array 内存令牌
+            g_array[i][j] = i * 10 + j;
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+
+    // 待测试的标量变量
+    int scalar_a = 0;   // 在分支前修改，其Phi节点应被优化掉
+    int scalar_b = 100; // 在分支的一侧被修改，其Phi节点必须保留
+    int final_result = 0;
+
+    // 主循环，用于测试循环变量、条件分支和复杂的 SSA 场景
+    i = 0;
+    while (i < 8) {
+        // 变量 a: 在 if-else 菱形结构之前被修改
+        // 在合并点，它的两个输入值是相同的，其Phi节点是【冗余】的
+        scalar_a = scalar_a + i;
+
+        if (i % 3 == 0) {
+            // --- 分支 1 ---
+            // 变量 b: 在这个分支中被修改
+            scalar_b = scalar_b + 50;
+
+            // 调用辅助函数，传入 g_array 的两个不同切片
+            // 这会深度测试编译器的内存模型和别名分析能力
+            final_result = final_result + update_and_read_slices(g_array, g_array[1]);
+
+            // 测试 continue：必须正确跳转到循环末尾的 i = i + 1
+            if (i == 6) {
+                i = i + 1;
+                continue;
+            }
+
+        } else {
+            // --- 分支 2 ---
+            // 变量 b: 在这个分支中【不】被修改，它的值“穿透”了此分支
+            // 变量 a: 它的值也“穿透”了此分支
+            final_result = final_result + 1;
+        }
+        
+        // --- 合并点 (Merge Point) ---
+        // 此时，一个正确的 SSA 构建器会为 scalar_a 和 scalar_b 创建隐式的 Phi 节点
+        // 您的 Phi 消除优化应该能识别出 a 的 Phi 是冗余的，但 b 的不是。
+        
+        // 使用合并后的值
+        scalar_a = scalar_a + 1;
+        scalar_b = scalar_b - 2;
+        final_result = final_result + scalar_a + scalar_b;
+
+        // 测试 break
+        if (final_result > 1000) {
+            break;
+        }
+
+        i = i + 1;
+    }
+
+    // 读取循环结束后 g_array 的最终状态
+    // 这验证了循环内所有的内存状态更新是否被正确地传递
+    return final_result + g_array[0][2] + g_array[1][1];
+}

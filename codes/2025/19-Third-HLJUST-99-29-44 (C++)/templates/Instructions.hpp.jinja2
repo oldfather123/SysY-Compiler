@@ -1,0 +1,68 @@
+#pragma once
+#include "IR/User.hpp"
+#include "IR/Value.hpp"
+#include "common/type.hpp"
+#include <string>
+{%- for header in headers %} 
+#include "{{ header }}"
+{%- endfor %}
+
+namespace IR {
+
+class BasicBlock;
+class Function;
+class Instruction : public User {
+public :
+    Instruction(Type* t, std::string name, BasicBlock* bb) : User(t, name), parent(bb){}
+
+    virtual std::string to_str() = 0;
+    virtual std::string to_llvm() = 0;
+
+    BasicBlock* get_parent() { return this->parent; }
+private :
+    // The parent baisc block
+    BasicBlock* parent;        
+    // three address form, maintain the result
+};
+
+/* User Code Start: code space 1 */
+
+/* User Code End: code space 1 */
+
+{%- for cls in classes %}
+
+class {{ cls.classname }}Inst : public Instruction {
+public:
+    {{ cls.classname }}Inst({% for arg in cls.constructor_args %} {{- arg.type }} {{ arg.name }}{% if not loop.last %}, {% endif %}{% endfor %})
+    /* User Code Start: {{ cls.classname }} */
+
+    /* User Code End: {{ cls.classname }} */
+    {
+        /* User Code Start: {{ cls.classname }} construct function */
+
+        /* User Code End: {{ cls.classname }} construct function */
+    }
+
+    /* User Code Start: {{ cls.classname }} place */
+
+    /* User Code End: {{ cls.classname }} place */
+
+    {%- for method in cls.methods %}
+    {{ method.type }} {{ method.name }}({{ method.args }}){{ " const" if method.is_const }};
+    {%- endfor %}
+
+    {% for member in cls.members %} {% if member.generate_get %}
+    {{ member.type }} get{{ member.name }}() const {
+        /* User Code Start: {{ cls.classname }}::get_{{ member.name[1:] }} */
+        return {{ member.name }};
+        /* User Code End: {{ cls.classname }}::get_{{ member.name[1:] }} */
+    }
+    {% endif %} {% endfor %}
+private:
+    {%- for member in cls.members %}
+    {{ member.type }} {{ member.name }};
+    {%- endfor %}
+};
+{%- endfor %}
+
+}

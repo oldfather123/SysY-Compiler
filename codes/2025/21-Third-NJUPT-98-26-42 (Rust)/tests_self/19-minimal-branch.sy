@@ -1,0 +1,13 @@
+// 最小化的分支测试
+int test(int x) {
+    if (x > 0) {
+        // then分支不使用x
+    } else {
+        x = x + 1;  // else分支使用x
+    }
+    return x;
+}
+
+int main() {
+    return test(5);
+}

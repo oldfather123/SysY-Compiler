@@ -1,0 +1,377 @@
+#include <ast/basic_node.h>
+#include <ast/statement.h>
+#include <ast/helper.h>
+#include <llvm_ir/ir_builder.h>
+#include <llvm_ir/build/type_trans.h>
+#include <llvm_ir/function.h>
+#include <ast/expression.h>
+#include <common/type/symtab/semantic_table.h>
+#include <iostream>
+#include <cassert>
+#include <set>
+using namespace std;
+using namespace LLVMIR;
+
+using DT = DataType;
+
+#define NEW_BLOCK() builder.createBlock()
+
+extern IRTable                       irgen_table;
+extern IR                            builder;
+extern IRFunction*                   ir_func;
+extern set<pair<Operand*, Operand*>> phi_list;
+
+void ExprNode::genIRCode()
+{
+    cerr << "Base ExprNode genIRCode should not be called, occurred at line " << line_num << endl;
+    assert(false);
+}
+
+void LeftValueExpr::genIRCode()
+{
+    IRBlock*         block = builder.getBlock(ir_func->cur_label);
+    vector<Operand*> idxs;
+    // VarAttribute     val   = semTable->glbSymMap[entry];
+    VarAttribute* val;
+    bool          arr_flag = false;
+
+    if (dims)
+    {
+        for (auto dim : *dims)
+        {
+            dim->genIRCode();
+            block->insertTypeConvert(dim->attr.val.type->getKind(), TypeKind::Int, ir_func->max_reg);
+            idxs.push_back(getRegOperand(ir_func->max_reg));
+        }
+
+        arr_flag = !idxs.empty();
+    }
+
+    Operand* val_ptr        = nullptr;
+    int      local_reg_num  = irgen_table.symTab->getReg(entry);
+    bool     param_arr_flag = false;
+    if (local_reg_num == -1)  // 本地不存在，为全局变量
+    {
+        val_ptr = getGlobalOperand(entry->getName());
+        val     = &semTable->glbSymMap[entry];
+    }
+    else
+    {
+        val_ptr = getRegOperand(local_reg_num);
+        val     = &irgen_table.regMap[local_reg_num];
+        auto it = irgen_table.formalArrTab.find(local_reg_num);
+        if (it != irgen_table.formalArrTab.end()) param_arr_flag = true;
+    }
+
+    // cerr << "Current ir_func->max_reg is " << ir_func->max_reg << endl;
+
+    DT dtype = TYPE2LLVM(val->type->getKind());
+
+    if (arr_flag || attr.val.type->getKind() == TypeKind::Ptr)
+    {
+        if (!param_arr_flag) idxs.insert(idxs.begin(), getImmeI32Operand(0));
+
+        block->insertGEP_I32(dtype, val_ptr, val->dims, idxs, ++ir_func->max_reg);
+        val_ptr = getRegOperand(ir_func->max_reg);
+    }
+
+    if (!isLval && attr.val.type->getKind() != TypeKind::Ptr) block->insertLoad(dtype, val_ptr, ++ir_func->max_reg);
+
+    lv_ptr = val_ptr;
+}
+
+void ConstExpr::genIRCode()
+{
+    IRBlock* block = builder.getBlock(ir_func->cur_label);
+
+    ++ir_func->max_reg;
+    switch (value.type)
+    {
+        case VarValue::Type::Int:
+        {
+            int val = value.int_val;
+            block->insertArithmeticI32_ImmeAll(IROpCode::ADD, val, 0, ir_func->max_reg);
+            break;
+        }
+        case VarValue::Type::LL:  // long long，目前直接作为int处理
+        {
+            int val = value.ll_val;
+            block->insertArithmeticI32_ImmeAll(IROpCode::ADD, val, 0, ir_func->max_reg);
+            break;
+        }
+        case VarValue::Type::Float:
+        {
+            float val = value.float_val;
+            block->insertArithmeticF32_ImmeAll(IROpCode::FADD, val, 0, ir_func->max_reg);
+            break;
+        }
+        default: assert(false);
+    }
+}
+
+void UnaryExpr::genIRCode()
+{
+    IRBlock* block = builder.getBlock(ir_func->cur_label);
+    IR_GenUnary(val, op, block);
+}
+
+void BinaryExpr::genIRCode_Assign()
+{
+    IRBlock* block = builder.getBlock(ir_func->cur_label);
+
+    lhs->genIRCode();
+    rhs->genIRCode();
+
+    LeftValueExpr* lval = dynamic_cast<LeftValueExpr*>(lhs);
+    assert(lval != nullptr);
+
+    DT dtype = TYPE2LLVM(lval->attr.val.type->getKind());
+
+    block = builder.getBlock(ir_func->cur_label);
+    block->insertTypeConvert(rhs->attr.val.type->getKind(), lval->attr.val.type->getKind(), ir_func->max_reg);
+
+    block->insertStore(dtype, getRegOperand(ir_func->max_reg), lval->lv_ptr);
+}
+
+/*
+Logical AND Short Circuit Evaluation:
+
+        +-------------------+
+        |                   |
+        |   Evaluate Left   |
+        |     Operand       |
+        |                   |
+        +---------+---------+
+                  |
+         Is Left True?
+                  |
+          +-------+------+
+          |              |
+        Yes             No
+          |              |
+          |          Jump to False Label
+          |              |
+   +------+------+
+   |             |
+   |  Evaluate   |
+   |  Right      |
+   |  Operand    |
+   |             |
+   +------+------+
+          |
+     Is Right True?
+          |
+    +-----+-----+
+    |           |
+   Yes         No
+    |           |
+  Jump to     Jump to
+  True Label  False Label
+*/
+void BinaryExpr::genIRCode_LogicalAnd()
+{
+    IRBlock* right_eval_block = NEW_BLOCK();
+    right_eval_block->comment = "And opertor at line " + to_string(line_num);
+
+    lhs->true_label  = right_eval_block->block_id;
+    lhs->false_label = false_label;
+
+    rhs->true_label  = true_label;
+    rhs->false_label = false_label;
+
+    lhs->genIRCode();
+    IRBlock* block = builder.getBlock(ir_func->cur_label);
+    block->insertTypeConvert(lhs->attr.val.type->getKind(), TypeKind::Bool, ir_func->max_reg);
+    phi_list.emplace(getRegOperand(ir_func->max_reg), getLabelOperand(block->block_id));
+    block->insertCondBranch(ir_func->max_reg, lhs->true_label, lhs->false_label);
+
+    ir_func->cur_label = lhs->true_label;
+    rhs->genIRCode();
+    block = builder.getBlock(ir_func->cur_label);
+    block->insertTypeConvert(rhs->attr.val.type->getKind(), TypeKind::Bool, ir_func->max_reg);
+    phi_list.emplace(getRegOperand(ir_func->max_reg), getLabelOperand(block->block_id));
+
+    return;
+}
+
+/*
+Logical OR Short Circuit Evaluation:
+
+        +-------------------+
+        |                   |
+        |   Evaluate Left   |
+        |     Operand       |
+        |                   |
+        +---------+---------+
+                  |
+         Is Left False?
+                  |
+          +-------+------+
+          |              |
+         No            Yes
+          |              |
+      Jump to       +----+-----+
+     True Label     |          |
+                    | Evaluate |
+                    |  Right   |
+                    | Operand  |
+                    |          |
+                    +----+-----+
+                         |
+                   Is Right True?
+                         |
+                   +-----+-----+
+                   |           |
+                  Yes         No
+                   |           |
+                 Jump to     Jump to
+                 True Label  False Label
+*/
+void BinaryExpr::genIRCode_LogicalOr()
+{
+    IRBlock* right_eval_block = NEW_BLOCK();
+    right_eval_block->comment = "Or opertor at line " + to_string(line_num);
+
+    lhs->true_label  = true_label;
+    lhs->false_label = right_eval_block->block_id;
+
+    rhs->true_label  = true_label;
+    rhs->false_label = false_label;
+
+    lhs->genIRCode();
+    IRBlock* block = builder.getBlock(ir_func->cur_label);
+    block->insertTypeConvert(lhs->attr.val.type->getKind(), TypeKind::Bool, ir_func->max_reg);
+    phi_list.emplace(getRegOperand(ir_func->max_reg), getLabelOperand(block->block_id));
+    block->insertCondBranch(ir_func->max_reg, lhs->true_label, lhs->false_label);
+
+    ir_func->cur_label = right_eval_block->block_id;
+    rhs->genIRCode();
+    block = builder.getBlock(ir_func->cur_label);
+    block->insertTypeConvert(rhs->attr.val.type->getKind(), TypeKind::Bool, ir_func->max_reg);
+    phi_list.emplace(getRegOperand(ir_func->max_reg), getLabelOperand(block->block_id));
+
+    return;
+}
+
+void BinaryExpr::genIRCode_LogicalRVal()
+{
+    phi_list.clear();
+
+    IRBlock* gather_block = NEW_BLOCK();
+    gather_block->comment = "Gather block for logical operator at line " + to_string(line_num);
+    true_label            = gather_block->block_id;
+    false_label           = gather_block->block_id;
+
+    genIRCode();
+
+    IRBlock* block = builder.getBlock(ir_func->cur_label);
+    block->insertUncondBranch(gather_block->block_id);
+
+    ir_func->cur_label = gather_block->block_id;
+    // gather_block->insertTypeConvert(attr.val.type->getKind(), TypeKind::Bool, ir_func->max_reg);
+    vector<pair<Operand*, Operand*>> phi_list_vec;
+
+    for (auto& [op, label] : phi_list)
+    {
+        LabelOperand* block_label = dynamic_cast<LabelOperand*>(label);
+
+        IRBlock* block = builder.getBlock(block_label->label_num);
+
+        if (BranchCondInst* branch = dynamic_cast<BranchCondInst*>(block->insts.back()))
+        {
+            LabelOperand* true_target  = dynamic_cast<LabelOperand*>(branch->true_label);
+            LabelOperand* false_target = dynamic_cast<LabelOperand*>(branch->false_label);
+
+            bool could_reach_here = false;
+
+            if (true_target->label_num == gather_block->block_id)
+                could_reach_here = true;
+            else if (false_target->label_num == gather_block->block_id)
+                could_reach_here = true;
+
+            if (could_reach_here) phi_list_vec.push_back({op, label});
+        }
+        else if (BranchUncondInst* branch = dynamic_cast<BranchUncondInst*>(block->insts.back()))
+        {
+            LabelOperand* target = dynamic_cast<LabelOperand*>(branch->target_label);
+
+            if (target->label_num == gather_block->block_id) phi_list_vec.push_back({op, label});
+        }
+    }
+
+    RegOperand* res = getRegOperand(++ir_func->max_reg);
+    PhiInst*    phi = new PhiInst(DT::I1, res, &phi_list_vec);
+    gather_block->insts.push_back(phi);
+}
+
+void BinaryExpr::genIRCode()
+{
+    if (op == OpCode::Assign)
+    {
+        genIRCode_Assign();
+        return;
+    }
+    else if (op == OpCode::And)
+    {
+        if (true_label == -1)
+            genIRCode_LogicalRVal();
+        else
+            genIRCode_LogicalAnd();
+        return;
+    }
+    else if (op == OpCode::Or)
+    {
+        if (true_label == -1)
+            genIRCode_LogicalRVal();
+        else
+            genIRCode_LogicalOr();
+        return;
+    }
+
+    IRBlock* block = builder.getBlock(ir_func->cur_label);
+    IR_GenBinary(lhs, rhs, op, block);
+}
+
+void FuncCallExpr::genIRCode()
+{
+    IRBlock* block = builder.getBlock(ir_func->cur_label);
+
+    FuncDeclStmt* func_decl = semTable->funcDeclMap[entry];
+    Type*         ret_type  = func_decl->returnType;
+    DT            dtype     = TYPE2LLVM(ret_type->getKind());
+
+    if (!args)
+    {
+        if (ret_type == voidType)
+            block->insertCallVoidNoargs(dtype, entry->getName());
+        else
+            block->insertCallNoargs(dtype, entry->getName(), ++ir_func->max_reg);
+        return;
+    }
+
+    vector<pair<DataType, Operand*>> llvm_args;
+
+    auto& params_vec = *func_decl->params;
+    auto& args_vec   = *args;
+
+    size_t param_size = params_vec.size();
+    size_t args_size  = args_vec.size();
+    assert(param_size == args_size);
+
+    for (size_t i = 0; i < param_size; ++i)
+    {
+        TypeKind param_kind = params_vec[i]->baseType->getKind();
+        if (params_vec[i]->dims) param_kind = TypeKind::Ptr;
+
+        DT param_dtype = TYPE2LLVM(param_kind);
+
+        args_vec[i]->genIRCode();
+        block->insertTypeConvert(args_vec[i]->attr.val.type->getKind(), param_kind, ir_func->max_reg);
+        llvm_args.push_back({param_dtype, getRegOperand(ir_func->max_reg)});
+    }
+
+    if (ret_type == voidType)
+        block->insertCallVoid(dtype, entry->getName(), llvm_args);
+    else
+        block->insertCall(dtype, entry->getName(), llvm_args, ++ir_func->max_reg);
+}

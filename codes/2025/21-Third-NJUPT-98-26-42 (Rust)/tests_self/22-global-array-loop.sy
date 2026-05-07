@@ -1,0 +1,14 @@
+int g_array[6];
+int g_a = 5;
+
+int main(){
+    int i = 0;
+    int sum = 0;
+    while (i < 6) {
+        g_array[i] = i * 2;
+        sum = sum + g_array[i];
+        g_a = g_a + 1;
+        i = i + 1;
+    }
+    return g_a;
+}

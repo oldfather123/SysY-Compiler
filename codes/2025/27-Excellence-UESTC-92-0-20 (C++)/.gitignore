@@ -1,0 +1,34 @@
+# 忽略特定的 JSON 配置文件
+.vscode/task.json
+.vscode/tasks.json
+.vscode/launch.json
+.vscode/settings.json
+dh_test
+testcases
+testcases1
+testcases2
+testcase
+test.sy
+work/
+build/
+build
+errors.log
+
+## 暂时，用于前端调试
+main.cpp
+Compiler
+.cache
+dh_test.ipynb
+test.ipynb
+myCMakeLists.txt
+test
+funcTest
+functional2025
+backOutput.txt
+myBack.ipynb
+functional2025
+back.ipynb
+test.ipynb
+myBack.ipynb
+funcTest 
+backOutput.txt

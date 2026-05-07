@@ -1,0 +1,10 @@
+*.txt
+*.sy
+*.s
+
+functional_recover
+target
+out
+**/.idea
+.idea
+txt

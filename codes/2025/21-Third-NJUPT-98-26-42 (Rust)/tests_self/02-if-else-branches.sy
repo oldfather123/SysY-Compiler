@@ -1,0 +1,14 @@
+// 使用函数参数测试if-else中的变量传递
+int test(int x) {
+    x = x + 1;  // 修改参数
+    if (x > 10) {
+        x = 100;
+    } else {
+        x = x * 2;  // 使用修改后的x
+    }
+    return x;
+}
+
+int main() {
+    return test(5);  // 应该返回 (5+1)*2 = 12
+}

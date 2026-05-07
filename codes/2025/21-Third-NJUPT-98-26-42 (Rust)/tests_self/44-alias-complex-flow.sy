@@ -1,0 +1,30 @@
+// 测试与59_sort_test5.sy相同的控制流模式
+int swap(int arr[], int i, int j) {
+    return 0;
+}
+
+int main() {
+    int arr[10];
+    arr[0] = 1;
+    
+    int dad = 1;
+    int son = 2;
+    int end = 10;
+    
+    // 模拟heap_ajust函数的控制流
+    while (son < end + 1) {
+        if (son < end) {
+            son = son + 1;
+        }
+        
+        if (dad > son) {
+            return 0;
+        } else {
+            dad = swap(arr, dad, son);  // 关键：这里dad既是参数又是返回值接收者
+            dad = son;                  // 然后dad被重新赋值
+            son = dad * 2 + 1;          // son被重新计算
+        }
+    }
+    
+    return 0;
+}

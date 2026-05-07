@@ -1,0 +1,16 @@
+const int CONST_A = 10;
+const int CONST_B = 20;
+int global_var = 100;
+int global_array[5] = {1, 2, 3, 4, 5};
+
+int main() {
+    int local = global_var + CONST_A;
+    global_var = local + CONST_B;
+    
+    int sum = 0;
+    sum = sum + global_array[0];
+    sum = sum + global_array[4];
+    global_array[2] = 30;
+    
+    return sum + global_var;
+}

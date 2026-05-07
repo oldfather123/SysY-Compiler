@@ -1,0 +1,10 @@
+// 指令展开测试用例
+// 测试ArrayAlloc, ArrayGet, ArrayPut的展开
+
+int main() {
+    int arr[5];
+    arr[0] = 10;
+    arr[1] = 20;
+    int sum = arr[0] + arr[1];
+    return sum;
+}

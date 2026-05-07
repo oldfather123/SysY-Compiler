@@ -1,0 +1,6 @@
+add_subdirectory(parser)
+add_subdirectory(common)
+add_subdirectory(lightir)
+add_subdirectory(sy)
+add_subdirectory(codegen)
+add_subdirectory(passes)

@@ -1,0 +1,665 @@
+;; SSA IR 核心定义
+;; 
+;; 附录:
+;; - 对于有Copy类型的使用 (type xxx (primitive xxx))
+;; - 对于没有Copy类型的使用 (type xxx extern (enum))
+
+;;===============================================
+;; Primitive types && External types
+;;===============================================
+(type Unit (primitive Unit))
+
+(decl pure unit () Unit)
+(extern constructor unit unit)
+
+;; 额外定义的浮点, 否则 ISLE 内部使用 Ieee32/64
+(type f32 (primitive f32)) 
+(type f64 (primitive f64))
+(type Offset (primitive Offset))
+
+(decl pure i32_to_i64 (i32) i64)
+(extern constructor i32_to_i64 i32_to_i64)
+(convert i32 i64 i32_to_i64)
+
+;; refkey 类型
+(type Block (primitive Block))
+(type Value (primitive Value))
+(type ValueVec (primitive ValueVec))
+(type U32OptVec (primitive U32OptVec))
+(type Inst (primitive Inst))
+(type Global (primitive Global))
+(type FuncRef (primitive FuncRef))
+(type JumpTable (primitive JumpTable))
+(type StackSlot (primitive StackSlot))
+
+
+;;;; ISLE &[Value] ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(type ValueSlice extern (enum))
+(decl pure valuevec_slice (ValueVec) ValueSlice)
+(extern constructor valuevec_slice valuevec_slice)
+(convert ValueVec ValueSlice valuevec_slice) ;; <== 现在能把ValueVec直接当作ValueSlice使用了
+
+;; 获得 ValueSlice 的第一个值
+(decl pure value_slice_first (ValueSlice) Value)
+(extern constructor value_slice_first value_slice_first)
+
+;; Value是否被使用
+(decl pure value_is_unused (Value) bool)
+(extern constructor value_is_unused value_is_unused)
+;; TODO ...
+
+;;;; Extractor from value ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 从值获得命令
+(decl def_inst (Inst) Value)
+(extern extractor def_inst def_inst)
+
+;; 从值获得类型
+;; ⚠️ 警告: 禁止把 extractor 用于 if-let 语句
+;; if-let 明确只接受"构造函数代替提取器", 而且必须要 (decl pure ... ) 没有副作用
+;; 意味着 value_type 要想用于 if-let , 必须要额外定义 has_type -> bool 的方法
+(decl value_type (Type) Value)
+(extern extractor infallible value_type value_type)
+
+
+;; 从Value获取ValueData
+(decl value_data (ValueData) Value)
+(extern extractor infallible value_data value_data)
+
+;;;; Extractor from inst ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 获取所有结果
+(decl inst_results (ValueSlice) Inst)
+(extern extractor infallible inst_results inst_results)
+
+;; Inst的第一个结果
+(decl first_result (Value) Inst)
+(extern extractor first_result first_result)
+
+;; 检查指令是否没有返回值
+(decl no_inst_result (Inst) Inst)
+(extern extractor no_inst_result no_inst_result)
+
+;; 从Inst提取InstructionData
+(decl inst_data_value (InstructionData) Inst)
+(extern extractor infallible inst_data_value inst_data_value)
+
+;; 从指令的第一个有效结果中提取类型
+(decl result_type (Type) Inst)
+(extractor (result_type ty)
+           (first_result (value_type ty)))
+
+;; 用来检查指令是否具有特定类型
+;; 这个and实际上是将 (has_type ty inst)=inst 
+;; <= 扩展为 (has_type (result_type ty)=inst, inst=inst) = inst 的增强匹配
+(decl has_type (Type Inst) Inst)
+(extractor (has_type ty inst)
+           (and (result_type ty) inst))
+
+;; 提取指令的第一个操作数
+(decl first_argument (Value) Inst)
+(extern extractor first_argument first_argument)
+
+;; 第一个操作数是否具有特定类型
+(decl first_argument_has_type (Type Inst) Inst)
+(extractor (first_argument_has_type ty inst)
+           (and (first_argument (value_type ty)) inst))
+
+;; 起一个简短的别名
+(decl arg1_has_type (Type Inst) Inst)
+(extractor (arg1_has_type ty inst) (first_argument_has_type ty inst))
+
+;;===============================================
+;; 类型系统
+;;===============================================
+
+;; 数组元素类型
+(type ArrayElemType extern
+    (enum
+        (Bool)
+        (Int32)
+        (Float32)
+    ))
+
+;; 类型
+(type Type extern
+    (enum
+        (Unit)
+        (Bool)
+        (Int32)
+        (Int64)
+        (Float32)
+        (Float64)
+        (ArrayPtr (elem ArrayElemType) (dims U32OptVec))
+        (MemToken)
+    ))
+
+(decl ty_unit (Type) Type)
+(extern extractor ty_unit ty_unit) ;; <= 由于要过滤 MemToken,因此是外部类型
+
+(decl ty_bool (Type) Type)
+(extern extractor ty_bool ty_bool)
+
+(decl ty_i32 (Type) Type)
+(extern extractor ty_i32 ty_i32) ;; <= 由于要处理Bool/ArrayPtr等, 因此是外部类型
+
+(decl ty_i64 (Type) Type)
+(extern extractor ty_i64 ty_i64)
+
+(decl ty_f32 (Type) Type)
+(extern extractor ty_f32 ty_f32)
+
+(decl ty_f64 (Type) Type)
+(extern extractor ty_f64 ty_f64)
+
+;; 用来检验返回值配性
+(decl ty_no_ret () Type)
+(extern extractor ty_no_ret ty_no_ret)
+
+(decl ty_fit_xreg () Type)
+(extern extractor ty_fit_xreg ty_fit_xreg)
+
+(decl ty_fit_freg () Type)
+(extern extractor ty_fit_freg ty_fit_freg)
+
+;; 用来检查是否有符号
+;; ✅一些hack方法: 由于Sysy只有I32类型且为signed, I64仅仅是ArrayPtr的展开
+;; 因此可以认为I64是unsigned
+(decl ty_fit_signed () Type)
+(extern extractor ty_fit_signed ty_fit_signed)
+; (extractor (ty_fit_signed) Type.Int64)
+
+(decl ty_fit_unsigned () Type)
+(extern extractor ty_fit_unsigned ty_fit_unsigned)
+; (extractor (ty_fit_unsigned) Type.Int32)
+
+;;===============================================
+;; 值系统
+;;===============================================
+
+;; 值定义
+(type ValueData extern
+    (enum
+        (Const (ty Type) (c ConstValue))
+        (Inst (ty Type) (inst Inst) (idx u32))
+        (BlockParam (ty Type) (block Block) (idx u32))
+        (GlobalSymbol (ty Type) (sym Global))
+        (Alias (ty Type) (original Value))
+        (Union (ty Type) (x Value) (y Value))
+    ))
+
+;; 常量值
+(type ConstValue extern
+    (enum
+        (Unit)
+        (Bool (val bool))
+        (Int32 (val i32))
+        (Int64 (val i64))
+        (Float32 (val f32))
+        (Float64 (val f64))
+    ))
+
+;; TODO: 暂时没有任何理由添加 bool/unit => Value
+
+;; 提取32位整数常量 -- 也使用i64来存储
+(decl iconst32 (i64) Value)
+(extractor
+    (iconst32 n)
+    (value_data (ValueData.Const Type.Int32 (ConstValue.Int32 n)))
+)
+
+;; 提取64位整数常量
+(decl iconst64 (i64) Value)
+(extractor
+    (iconst64 n)
+    (value_data (ValueData.Const Type.Int64 (ConstValue.Int64 n)))
+)
+
+;; 不区分i32/i64的提取
+(decl iconst (i64) Value)
+(extern extractor iconst iconst)
+
+;; 提取整数常量
+(decl i64_from_iconst (i64) Value)
+(extern extractor i64_from_iconst i64_from_iconst)
+
+
+;; 提取32位浮点常量
+(decl fconst32 (f32) Value)
+(extractor
+    (fconst32 n)
+    (value_data (ValueData.Const Type.Float32 (ConstValue.Float32 n)))
+)
+
+;; 提取64位浮点常量
+(decl fconst64 (f64) Value)
+(extractor
+    (fconst64 n)
+    (value_data (ValueData.Const Type.Float64 (ConstValue.Float64 n)))
+)
+
+;;===============================================
+;; 数组/内存信息
+;;===============================================
+
+;; 内存位置
+(type MemoryLocation extern
+    (enum
+        (Unknown)
+        (Stack)
+        (Global)
+        (Heap)
+    ))
+
+;; 数组初始化模式
+(type ArrayInit extern
+    (enum
+        (Zero)                      ; 零初始化
+        (List (vals ValueVec))      ; 初始化列表
+        (Undef)                     ; 未定义初始化
+    ))
+
+;; 内存对象
+(type MemoryObject extern
+    (enum
+        (ArrayAlloc (inst Inst))
+        (StackSlot (slot StackSlot))
+        (Global (symbol Global))
+        (FnParamUnknown (func FuncRef))
+    ))
+
+;; 内存令牌
+(type MemoryToken (primitive MemoryToken))
+
+;; 栈槽数据
+(type StackSlotData (primitive StackSlotData))
+
+;;===============================================
+;; 操作集
+;;===============================================
+
+;; 二元运算符
+(type BinOp extern
+    (enum
+        ;; 整数运算
+        (IAdd)
+        (ISub)
+        (IMul)
+        (IDiv)
+        (IMod)
+        ;; 位运算
+        (IShl)
+        (IShr)
+        (ISar)
+        (IAnd)  ;; 位与 &
+        (IOr)   ;; 位或 |
+        (IXor)
+        ;; 浮点运算
+        (FAdd)
+        (FSub)
+        (FMul)
+        (FDiv)
+        (FMod)
+        ;; 比较运算
+        (Eq)
+        (Ne)
+        (Lt)
+        (Le)
+        (Gt)
+        (Ge)
+    ))
+
+;; 一元运算符
+(type UnaryOp extern
+    (enum
+        (INeg)
+        (BNot)
+        (FNeg)
+        (Not)
+    ))
+
+
+;; 指令定义
+;; ✅在ASM阶段不可能出现高级内存指令, 因为所有的高级内存操作均已被pass展开为低级操作
+(type InstructionData extern
+    (enum 
+        ;; 基本指令
+        (Binary (op BinOp) (lhs Value) (rhs Value))
+        (Unary (op UnaryOp) (val Value))
+        (Call (func FuncRef) (args ValueVec))
+        (Cast (val Value) (to Type))
+
+        ;; 高级内存操作
+        (ArrayAlloc 
+            (elem Type) (dims U32OptVec) (is_const bool)
+            (mem_loc MemoryLocation) (init ArrayInit))
+        (ArrayGet (ptr Value) (indices ValueVec) (token Value))
+        (ArrayPut (ptr Value) (indices ValueVec) (value Value) (token Value))
+        (ArraySlice (ptr Value) (sdims ValueVec))
+        (GlobalScalarGet (global Value) (token Value))
+        (GlobalScalarSet (global Value) (value Value) (token Value))
+        
+        ;; 低级内存操作
+        (StackAddr (slot StackSlot))
+        (GlobalAddr (global Global))
+        (Load (addr Value) (offset Offset) (ty Type) (token Value))
+        (Store (addr Value) (offset Offset) (value Value) (ty Type) (token Value))
+
+        ;; 终结指令
+        (Jump (target BlockCall))
+        (BranchTable (idx Value) (table JumpTable))
+        (Brif (cond Value) (targets BlockCall2))
+        (ReturnCall (func FuncRef) (args ValueVec))
+        (Return (returns ValueVec))
+        (Unreachable)
+    ))
+
+;;===============================================
+;; 块数据
+;;===============================================
+
+;; 块调用 -- 用来包装 BlockParam
+(type BlockCall (primitive BlockCall))
+(decl label_from_block_call (BlockCall) Label)
+(extern constructor label_from_block_call label_from_block_call)
+
+(type BlockCall2 extern (enum))
+(decl block_call_2 (BlockCall BlockCall) BlockCall2)
+(extern constructor block_call_2 pack_block_call_2)
+(extern extractor infallible block_call_2 unpack_block_call_2)
+
+;; 跳转表
+(type JumpTableData extern (enum))
+
+;;===============================================
+;; 基本指令
+;;===============================================
+
+;; 二元运算指令
+(decl iadd (Value Value) Inst)
+(extractor
+    (iadd x y)
+    (inst_data_value (InstructionData.Binary (BinOp.IAdd) x y))
+)
+
+(decl isub (Value Value) Inst)
+(extractor
+    (isub x y)
+    (inst_data_value (InstructionData.Binary (BinOp.ISub) x y))
+)
+
+(decl imul (Value Value) Inst)
+(extractor
+    (imul x y)
+    (inst_data_value (InstructionData.Binary (BinOp.IMul) x y))
+)
+
+(decl idiv (Value Value) Inst)
+(extractor
+    (idiv x y)
+    (inst_data_value (InstructionData.Binary (BinOp.IDiv) x y))
+)
+
+(decl imod (Value Value) Inst)
+(extractor
+    (imod x y)
+    (inst_data_value (InstructionData.Binary (BinOp.IMod) x y))
+)
+
+;; 位运算
+(decl ishl (Value Value) Inst)
+(extractor
+    (ishl x y)
+    (inst_data_value (InstructionData.Binary (BinOp.IShl) x y))
+)
+
+(decl ishr (Value Value) Inst)
+(extractor
+    (ishr x y)
+    (inst_data_value (InstructionData.Binary (BinOp.IShr) x y))
+)
+
+(decl isar (Value Value) Inst)
+(extractor
+    (isar x y)
+    (inst_data_value (InstructionData.Binary (BinOp.ISar) x y))
+)
+
+(decl iand (Value Value) Inst)
+(extractor
+    (iand x y)
+    (inst_data_value (InstructionData.Binary (BinOp.IAnd) x y))
+)
+
+(decl ior (Value Value) Inst)
+(extractor
+    (ior x y)
+    (inst_data_value (InstructionData.Binary (BinOp.IOr) x y))
+)
+
+(decl ixor (Value Value) Inst)
+(extractor
+    (ixor x y)
+    (inst_data_value (InstructionData.Binary (BinOp.IXor) x y))
+)
+
+;; 浮点运算
+(decl fadd (Value Value) Inst)
+(extractor
+    (fadd x y)
+    (inst_data_value (InstructionData.Binary (BinOp.FAdd) x y))
+)
+
+(decl fsub (Value Value) Inst)
+(extractor
+    (fsub x y)
+    (inst_data_value (InstructionData.Binary (BinOp.FSub) x y))
+)
+
+(decl fmul (Value Value) Inst)
+(extractor
+    (fmul x y)
+    (inst_data_value (InstructionData.Binary (BinOp.FMul) x y))
+)
+
+(decl fdiv (Value Value) Inst)
+(extractor
+    (fdiv x y)
+    (inst_data_value (InstructionData.Binary (BinOp.FDiv) x y))
+)
+
+(decl fmod (Value Value) Inst)
+(extractor
+    (fmod x y)
+    (inst_data_value (InstructionData.Binary (BinOp.FMod) x y))
+)
+
+;; 比较运算
+(decl eq (Value Value) Inst)
+(extractor
+    (eq x y)
+    (inst_data_value (InstructionData.Binary (BinOp.Eq) x y))
+)
+
+(decl ne (Value Value) Inst)
+(extractor
+    (ne x y)
+    (inst_data_value (InstructionData.Binary (BinOp.Ne) x y))
+)
+
+(decl lt (Value Value) Inst)
+(extractor
+    (lt x y)
+    (inst_data_value (InstructionData.Binary (BinOp.Lt) x y))
+)
+
+(decl le (Value Value) Inst)
+(extractor
+    (le x y)
+    (inst_data_value (InstructionData.Binary (BinOp.Le) x y))
+)
+
+(decl gt (Value Value) Inst)
+(extractor
+    (gt x y)
+    (inst_data_value (InstructionData.Binary (BinOp.Gt) x y))
+)
+
+(decl ge (Value Value) Inst)
+(extractor
+    (ge x y)
+    (inst_data_value (InstructionData.Binary (BinOp.Ge) x y))
+)
+
+;;===============================================
+;; 一元运算指令
+;;===============================================
+
+(decl ineg (Value) Inst)
+(extractor
+    (ineg val)
+    (inst_data_value (InstructionData.Unary (UnaryOp.INeg) val))
+)
+
+(decl bnot (Value) Inst)
+(extractor
+    (bnot val)
+    (inst_data_value (InstructionData.Unary (UnaryOp.BNot) val))
+)
+
+(decl fneg (Value) Inst)
+(extractor
+    (fneg val)
+    (inst_data_value (InstructionData.Unary (UnaryOp.FNeg) val))
+)
+
+(decl lnot (Value) Inst)
+(extractor
+    (lnot val)
+    (inst_data_value (InstructionData.Unary (UnaryOp.Not) val))
+)
+
+;;===============================================
+;; 类型转换和函数调用
+;;===============================================
+
+(decl call (FuncRef ValueVec) Inst)
+(extractor
+    (call func args)
+    (inst_data_value (InstructionData.Call func args))
+)
+
+(decl cast (Value Type) Inst)
+(extractor
+    (cast val to)
+    (inst_data_value (InstructionData.Cast val to))
+)
+
+;;===============================================
+;; 高級內存操作 -- 不可能出现在ASM阶段 -- 不进行匹配
+;;===============================================
+
+; (decl array_alloc (Type U32OptVec bool MemoryLocation ArrayInit) Inst)
+; (extractor
+;     (array_alloc elem dims is_const mem_loc init)
+;     (inst_data_value (InstructionData.ArrayAlloc elem dims is_const mem_loc init))
+; )
+
+; (decl array_get (Value ValueVec Value) Inst)
+; (extractor
+;     (array_get ptr indices token)
+;     (inst_data_value (InstructionData.ArrayGet ptr indices token))
+; )
+
+; (decl array_put (Value ValueVec Value Value) Inst)
+; (extractor
+;     (array_put ptr indices value token)
+;     (inst_data_value (InstructionData.ArrayPut ptr indices value token))
+; )
+
+; (decl array_slice (Value ValueVec) Inst)
+; (extractor
+;     (array_slice ptr sdims)
+;     (inst_data_value (InstructionData.ArraySlice ptr sdims))
+; )
+
+; (decl global_scalar_get (Value Value) Inst)
+; (extractor
+;     (global_scalar_get global token)
+;     (inst_data_value (InstructionData.GlobalScalarGet global token))
+; )
+
+; (decl global_scalar_set (Value Value Value) Inst)
+; (extractor
+;     (global_scalar_set global value token)
+;     (inst_data_value (InstructionData.GlobalScalarSet global value token))
+; )
+
+;;===============================================
+;; 低级内存操作
+;;===============================================
+
+(decl stack_addr (StackSlot) Inst)
+(extractor
+    (stack_addr slot)
+    (inst_data_value (InstructionData.StackAddr slot))
+)
+
+(decl global_addr (Global) Inst)
+(extractor
+    (global_addr global)
+    (inst_data_value (InstructionData.GlobalAddr global))
+)
+
+(decl load (Value Offset Type Value) Inst)
+(extractor
+    (load addr offset ty token)
+    (inst_data_value (InstructionData.Load addr offset ty token))
+)
+
+(decl store (Value Offset Value Type Value) Inst)
+(extractor
+    (store addr offset value ty token)
+    (inst_data_value (InstructionData.Store addr offset value ty token))
+)
+
+;;===============================================
+;; 终结指令
+;;===============================================
+
+(decl jump (BlockCall) Inst) 
+(extractor
+    (jump block_call)
+    (inst_data_value (InstructionData.Jump block_call))
+)
+
+(decl br_table (Value JumpTable) Inst)
+(extractor
+    (br_table idx JT)
+    (inst_data_value (InstructionData.BranchTable idx JT))
+)
+
+(decl brif (Value BlockCall BlockCall) Inst)
+(extractor
+    (brif c block_then block_else)
+    (inst_data_value (InstructionData.Brif c (block_call_2 block_then block_else)))
+)
+
+(decl return_call (FuncRef ValueVec) Inst)
+(extractor
+    (return_call func args)
+    (inst_data_value (InstructionData.ReturnCall func args))
+)
+
+(decl return (ValueVec) Inst)
+(extractor
+    (return returns)
+    (inst_data_value (InstructionData.Return returns))
+)
+
+(decl unreachable () Inst)
+(extractor
+    (unreachable)
+    (inst_data_value (InstructionData.Unreachable))
+) 
+

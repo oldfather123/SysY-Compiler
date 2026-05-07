@@ -1,0 +1,7 @@
+/build
+/ctest
+/.vscode
+/.idea
+/cmake-build-debug
+/test
+/script

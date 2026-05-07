@@ -1,0 +1,20 @@
+add_library(
+    opt_lib STATIC
+    Dominators.cpp
+    Mem2Reg.cpp
+    FuncInfo.cpp
+    ConstPropagation.cpp
+    LoopInvHoist.cpp
+    LoopSearch.cpp
+    DeadCode.cpp
+    funuesdef.cpp
+    Instclone.cpp
+    Looplook.cpp
+    LoopBlock.cpp
+    TailRecursionElimination.cpp
+    Loopcase.cpp
+    arraypass.cpp
+    ComputeSimplify.cpp
+    GVN.cpp
+    LoopUnrolling.cpp
+)

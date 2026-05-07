@@ -1,0 +1,6 @@
+[submodule "tests"]
+	path = tests
+	url = https://gitlab.eduxiji.net/csc1/nscscc/compiler2022
+[submodule "scripts_utils"]
+	path = scripts_utils
+	url = https://github.com/zmr-233/libbash

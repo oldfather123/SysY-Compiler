@@ -1,0 +1,13 @@
+// 测试函数调用中的变量别名问题 - 简单情况
+int swap(int a, int b) {
+    return a + b;
+}
+
+int main() {
+    int x = 1;
+    int y = 2;
+    
+    // 简单的函数调用，参数和返回值没有别名
+    int result = swap(x, y);
+    return result;
+}

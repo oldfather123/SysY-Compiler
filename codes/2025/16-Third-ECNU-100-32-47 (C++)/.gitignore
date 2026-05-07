@@ -1,0 +1,15 @@
+# Mac OS X
+.DS_Store
+
+# Visual Studio Code
+.vscode/
+
+# Clangd configure
+.cache
+.clangd
+compile_commands.json
+
+# Nested build directory
+/build*
+
+/output

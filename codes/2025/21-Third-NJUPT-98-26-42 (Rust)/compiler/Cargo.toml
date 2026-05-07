@@ -1,0 +1,36 @@
+[package]
+name = "lycoris-recompile"
+description = "RISCV compiler for SysY2022"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[features]
+default = []
+
+[lib]
+name = "lycoris"
+path = "src/lib.rs"
+
+[dependencies]
+bitflags = "2.9.1"
+clap = { version = "4.5.40", features = ["derive"] }
+derive-new = "0.7.0"
+enum-map.workspace = true
+enum_dispatch = "0.3.13"
+ferris-says = "0.3"
+id-arena = "2.2.1"
+typed-arena = "2.0.2"
+serde = { version = "1.0.219", features = ["derive"] }
+slotmap = { version = "1.0.7", features = ["serde"] }
+strum = { version = "0.27.1", features = ["derive"] }
+thiserror = "2.0.12"
+log = "0.4.27"
+env_logger = "0.11.8"
+itertools = "0.14.0"
+refkey-utils = { path = "../crates/refkey-utils" }
+indoc = "2.0.6"
+
+[[bin]]
+name = "compiler"
+path = "src/main.rs"

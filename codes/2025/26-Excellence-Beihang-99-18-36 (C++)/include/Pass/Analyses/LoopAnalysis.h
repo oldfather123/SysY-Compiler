@@ -1,0 +1,178 @@
+#ifndef LOOPANALYSIS_H
+#define LOOPANALYSIS_H
+
+#include "Mir/Instruction.h"
+#include "Pass/Analysis.h"
+
+
+namespace Pass {
+class Loop {
+    using FunctionPtr = std::shared_ptr<Mir::Function>;
+    using BlockPtr = std::shared_ptr<Mir::Block>;
+    BlockPtr header_;
+    BlockPtr preheader_;
+    BlockPtr latch_;
+    std::vector<BlockPtr> blocks_;
+    std::vector<BlockPtr> latch_blocks_;
+    std::vector<BlockPtr> exitings_;
+    std::vector<BlockPtr> exits_;
+    int trip_count_ = -1;
+
+public:
+    Loop(BlockPtr header, const std::vector<BlockPtr> &blocks, const std::vector<BlockPtr> &latch_blocks,
+         const std::vector<BlockPtr> &exitings, const std::vector<BlockPtr> &exits) :
+        header_{std::move(header)}, blocks_{blocks}, latch_blocks_{latch_blocks}, exitings_{exitings}, exits_{exits} {}
+    Loop() {};
+    [[nodiscard]] BlockPtr get_header() const { return header_; }
+    [[nodiscard]] BlockPtr get_preheader() const { return preheader_; }
+    [[nodiscard]] BlockPtr get_latch() const { return latch_; }
+    [[nodiscard]] std::vector<BlockPtr> &get_blocks() { return blocks_; }
+    [[nodiscard]] std::vector<BlockPtr> &get_latch_blocks() { return latch_blocks_; }
+    [[nodiscard]] std::vector<BlockPtr> &get_exitings() { return exitings_; }
+    [[nodiscard]] std::vector<BlockPtr> &get_exits() { return exits_; }
+
+    std::shared_ptr<Mir::Block> find_block(const std::shared_ptr<Mir::Block> &block);
+
+    bool contain_block(const std::shared_ptr<Mir::Block> &block);
+
+    void set_preheader(BlockPtr preheader) { preheader_ = std::move(preheader); }
+
+    void set_header(BlockPtr header) { header_ = std::move(header); }
+
+    void set_latch(BlockPtr latch) { latch_ = std::move(latch); }
+
+    void add_block(const std::shared_ptr<Mir::Block> &block) { blocks_.push_back(block); }
+
+    void add_latch_block(const std::shared_ptr<Mir::Block> &block) { latch_blocks_.push_back(block); }
+    void add_exitings(const std::shared_ptr<Mir::Block> &block) { exitings_.push_back(block); }
+    void add_exits(const std::shared_ptr<Mir::Block> &block) { exits_.push_back(block); }
+    [[nodiscard]] int get_trip_count() const { return trip_count_; }
+    void set_trip_count(int trip_count) { trip_count_ = trip_count; }
+};
+
+class LoopNodeClone;
+class LoopNodeTreeNode : public std::enable_shared_from_this<LoopNodeTreeNode> {
+public:
+    explicit LoopNodeTreeNode(std::shared_ptr<Loop> loop) : loop_{std::move(loop)} {}
+
+    void add_child(std::shared_ptr<LoopNodeTreeNode> child) { children_.push_back(std::move(child)); }
+
+    void remove_child(const std::shared_ptr<LoopNodeTreeNode> &child) {
+        if (const auto it = std::find(children_.begin(), children_.end(), child); it != children_.end()) {
+            children_.erase(it);
+        }
+    }
+
+    void set_parent(std::shared_ptr<LoopNodeTreeNode> parent) { parent_ = std::move(parent); }
+
+    std::vector<std::shared_ptr<LoopNodeTreeNode>> &get_children() { return children_; }
+
+    std::shared_ptr<LoopNodeTreeNode> get_parent() { return parent_; }
+
+    std::shared_ptr<LoopNodeTreeNode> get_ancestor() {
+        if (this->get_parent() == nullptr) {
+            return shared_from_this();
+        } else {
+            return this->get_parent()->get_ancestor();
+        }
+    }
+
+    std::shared_ptr<Loop> get_loop() { return loop_; }
+
+    void add_block4ancestors(const std::shared_ptr<Mir::Block> &block);
+
+    std::shared_ptr<LoopNodeTreeNode> find_loop(const std::shared_ptr<Loop> &loop);
+
+    std::shared_ptr<LoopNodeTreeNode> find_block_in_loop(const std::shared_ptr<Mir::Block> &block);
+    [[nodiscard]] bool def_value(const std::shared_ptr<Mir::Value> &value);
+
+    std::shared_ptr<LoopNodeClone> clone_loop_node();
+
+    void fix_clone_info(const std::shared_ptr<LoopNodeClone> &clone_info);
+
+    bool is_nest();
+    int get_instr_size();
+
+private:
+    std::shared_ptr<Loop> loop_;
+    std::shared_ptr<LoopNodeTreeNode> parent_;
+    std::vector<std::shared_ptr<LoopNodeTreeNode>> children_;
+};
+
+class LoopNodeClone {
+public:
+    std::unordered_map<std::shared_ptr<Mir::Value>, std::shared_ptr<Mir::Value>> value_map;
+    std::shared_ptr<LoopNodeTreeNode> node_src;
+    std::shared_ptr<LoopNodeTreeNode> node_cpy;
+    LoopNodeClone() {}
+
+    void add_value_reflect(const std::shared_ptr<Mir::Value> &src, const std::shared_ptr<Mir::Value> &cpy) {
+        value_map[src] = cpy;
+    }
+
+    std::shared_ptr<Mir::Value> get_value_reflect(const std::shared_ptr<Mir::Value> &src) {
+        if (value_map.find(src) == value_map.end()) {
+            log_error("Value not found in value_map: %s", src->to_string().c_str());
+        }
+        return value_map[src];
+    }
+
+    void clear() { value_map.clear(); }
+
+    bool contain_value(const std::shared_ptr<Mir::Value> &value) { return value_map.find(value) != value_map.end(); }
+
+    void merge(const std::shared_ptr<LoopNodeClone> &clone_info);
+
+    std::unordered_map<std::shared_ptr<Mir::Value>, std::shared_ptr<Mir::Value>> &get_value_map() { return value_map; }
+};
+
+class LoopAnalysis final : public Analysis {
+public:
+    using FunctionPtr = std::shared_ptr<Mir::Function>;
+    using BlockPtr = std::shared_ptr<Mir::Block>;
+
+    explicit LoopAnalysis() : Analysis("LoopAnalysis") {}
+
+    void analyze(std::shared_ptr<const Mir::Module> module) override;
+
+    const std::vector<std::shared_ptr<Loop>> &loops(const FunctionPtr &func) const {
+        const auto it = loops_.find(func);
+        if (it == loops_.end()) {
+            log_error("Function not existed: %s", func->get_name().c_str());
+        }
+        return it->second;
+    }
+
+    const std::vector<std::shared_ptr<LoopNodeTreeNode>> &loop_forest(const FunctionPtr &func) const {
+        const auto it = loop_forest_.find(func);
+        if (it == loop_forest_.end()) {
+            static const std::vector<std::shared_ptr<LoopNodeTreeNode>> empty_vector;
+            return empty_vector;
+        }
+        return it->second;
+    }
+
+    std::shared_ptr<LoopNodeTreeNode> find_loop_in_forest(const FunctionPtr &func, const std::shared_ptr<Loop> &loop);
+
+    int get_block_depth(const FunctionPtr &func, const std::shared_ptr<Mir::Block> &block);
+
+    std::shared_ptr<LoopNodeTreeNode> find_block_in_forest(const FunctionPtr &func,
+                                                           const std::shared_ptr<Mir::Block> &block);
+    bool is_dirty() const override;
+
+    bool is_dirty(const std::shared_ptr<Mir::Function> &function) const override;
+
+    void set_dirty(const FunctionPtr &func);
+
+private:
+    using FunctLoopsMap = std::unordered_map<std::shared_ptr<Mir::Function>, std::vector<std::shared_ptr<Loop>>>;
+    FunctLoopsMap loops_;
+    using FunctLoopForestMap =
+            std::unordered_map<std::shared_ptr<Mir::Function>, std::vector<std::shared_ptr<LoopNodeTreeNode>>>;
+    FunctLoopForestMap loop_forest_;
+
+    std::unordered_map<FunctionPtr, bool> dirty_funcs_;
+};
+} // namespace Pass
+
+#endif // LOOPANALYSIS_H

@@ -1,0 +1,35 @@
+// 测试尾调用优化 (return_call)
+// 递归斐波那契数列，使用尾调用优化
+
+int fib_helper(int n, int a, int b) {
+    if (n == 0) {
+        return a;
+    }
+    if (n == 1) {
+        return b;
+    }
+    // 尾调用优化：直接返回递归调用的结果
+    return fib_helper(n - 1, b, a + b);
+}
+
+int fib(int n) {
+    // 尾调用优化：直接返回调用的结果
+    return fib_helper(n, 0, 1);
+}
+
+int main() {
+    // 测试前10个斐波那契数
+    int i = 0;
+    while (i < 10) {
+        putint(fib(i));
+        putch(32); // 空格
+        i = i + 1;
+    }
+    putch(10); // 换行
+    
+    // 测试一个更大的数
+    putint(fib(20));
+    putch(10);
+    
+    return 0;
+}

@@ -1,0 +1,20 @@
+void simple_test() {
+    int a = 0, b = 1, c = 2;
+    
+    while (a < 10) {
+        a = a + b;
+        b = b + c;
+        c = c + 1;
+        if (c > 10) {
+            a = a + 3;
+            b = a + b;
+        }else{
+            c = c - 5;
+        }
+    }
+}
+
+int main() {
+    simple_test();
+    return 0;
+}

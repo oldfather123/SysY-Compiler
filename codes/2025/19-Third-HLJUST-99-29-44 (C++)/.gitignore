@@ -1,0 +1,25 @@
+<<<<<<< HEAD
+<<<<<<< HEAD
+.idea
+.cache
+gitignore
+bin/
+build/
+tmp/
+=======
+.idea/**
+=======
+.idea
+>>>>>>> e38c3b8 (def ast inferstructure)
+.cache/**
+build
+bin/
+gen
+tmp/
+refs
+docs
+# tests/
+
+# *.gdb
+/.cache/
+>>>>>>> 2cea2f5 (finish gramma)

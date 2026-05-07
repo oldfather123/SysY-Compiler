@@ -1,0 +1,25 @@
+// 测试数组参数的别名问题 - 模拟59_sort_test5.sy的核心问题
+int swap(int array[], int i, int j) {
+    return i + j;
+}
+
+int main() {
+    int arr[10];
+    arr[0] = 1;
+    arr[1] = 2;
+    
+    int dad = 1;
+    int son = 2;
+    
+    // 在循环中使用数组和变量参数调用函数
+    while (dad < 10) {
+        if (dad > 5) {
+            dad = swap(arr, dad, son);  // 关键：数组参数 + 变量别名
+        } else {
+            dad = dad + 1;
+        }
+        son = dad * 2;
+    }
+    
+    return dad;
+}

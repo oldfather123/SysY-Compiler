@@ -1,0 +1,66 @@
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.systemf.compiler.interpreter.IRInterpreter;
+import org.systemf.compiler.machine.rv64gc.RVMachineCodeResult;
+import org.systemf.compiler.optimization.OptimizedResult;
+import org.systemf.compiler.query.QueryManager;
+import org.systemf.compiler.query.QueryRegistry;
+
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.Scanner;
+
+public class Compiler {
+	public static void main(String[] args) throws IOException {
+		CompileArgument compileArgument = parseArguments(args);
+
+		QueryRegistry.registerAll();
+		var query = QueryManager.getInstance();
+
+		var input = CharStreams.fromFileName(compileArgument.inputFilePath());
+		query.registerProvider(CharStream.class, () -> input);
+
+		if (compileArgument.outputFilePath() != null)
+			try (var stream = new PrintStream(compileArgument.outputFilePath())) {
+				stream.print(query.get(RVMachineCodeResult.class).code());
+			}
+		else {
+			var module = query.get(OptimizedResult.class).module();
+			IRInterpreter irInterpreter = new IRInterpreter();
+			Scanner scanner = new Scanner(System.in);
+			irInterpreter.execute(module, scanner, System.out);
+			scanner.close();
+			System.exit(irInterpreter.getMainRet());
+		}
+	}
+
+	static CompileArgument parseArguments(String[] args) throws IllegalArgumentException {
+		String inputFilePath = null, outputFilePath = null;
+
+		for (int i = 0; i < args.length; i++) {
+			var arg = args[i];
+			if (arg.charAt(0) == '-') {
+				if (arg.equals("-o")) {
+					if (i + 1 >= args.length) {
+						throw new IllegalArgumentException("`-o` requires an argument");
+					}
+					outputFilePath = args[i + 1];
+					i++;
+				} else {
+					/* ignore */
+				}
+			} else {
+				inputFilePath = arg;
+			}
+		}
+
+		if (inputFilePath == null) {
+			throw new IllegalArgumentException("no input file is provided");
+		}
+
+		return new CompileArgument(inputFilePath, outputFilePath);
+	}
+
+	record CompileArgument(String inputFilePath, String outputFilePath) {
+	}
+}

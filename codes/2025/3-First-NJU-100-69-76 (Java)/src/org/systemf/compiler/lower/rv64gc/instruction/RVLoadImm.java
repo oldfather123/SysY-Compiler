@@ -1,0 +1,48 @@
+package org.systemf.compiler.lower.rv64gc.instruction;
+
+import org.systemf.compiler.ir.ITracked;
+import org.systemf.compiler.ir.InstructionVisitor;
+import org.systemf.compiler.ir.type.I64;
+import org.systemf.compiler.ir.value.Value;
+import org.systemf.compiler.ir.value.instruction.nonterminal.DummyValueNonTerminal;
+
+import java.util.Collections;
+import java.util.SequencedSet;
+
+public class RVLoadImm extends DummyValueNonTerminal {
+	public long val;
+
+	public RVLoadImm(long val, String name) {
+		super(I64.INSTANCE, name);
+		this.val = val;
+	}
+
+	@Override
+	public String dumpInstructionBody() {
+		return "li " + val;
+	}
+
+	@Override
+	public SequencedSet<ITracked> getDependency() {
+		return Collections.emptySortedSet();
+	}
+
+	@Override
+	public void replaceAll(ITracked oldValue, ITracked newValue) {
+	}
+
+	@Override
+	public <T> T accept(InstructionVisitor<T> visitor) {
+		return visitor.visit(this);
+	}
+
+	@Override
+	public void unregister() {
+	}
+
+	@Override
+	public boolean contentEqual(Value other) {
+		if (!(other instanceof RVLoadImm otherImm)) return false;
+		return val == otherImm.val;
+	}
+}
