@@ -98,6 +98,23 @@ cmake --build src/build
 
 ## 6. 测试脚本
 
+### 6.1 安装 Git LFS
+
+```bash
+sudo apt update
+sudo apt install git-lfs
+git lfs install
+```
+
+### 6.2 下载解压测试集
+
+```bash
+git lfs pull
+unzip test.zip
+```
+
+### 6.3 运行测试脚本
+
 运行并对比一个测试目录：
 
 ```bash
