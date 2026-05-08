@@ -1,0 +1,35 @@
+# Local agent/tool state
+/.agents/
+/.codex/
+
+# Build outputs
+/build/
+/src/build/
+/cmake-build-*/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# Compiler binaries and artifacts
+*.obj
+*.so.*
+*.dll
+*.dylib
+*.exe
+
+# Generated project outputs
+/test/
+/src/test_output/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
