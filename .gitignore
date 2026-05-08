@@ -19,10 +19,6 @@ cmake_install.cmake
 *.dylib
 *.exe
 
-# Generated project outputs
-/test/
-/src/test_output/
-
 # IDE and editor files
 .idea/
 .vscode/
