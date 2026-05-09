@@ -1,5 +1,8 @@
 #include "frontend/ASTDumper.h"
 
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
 #include <ostream>
 #include <sstream>
 
@@ -9,36 +12,15 @@ std::string childPrefix(const std::string &prefix, bool isLast) {
     return prefix + (isLast ? "  " : "| ");
 }
 
-std::string location(ast::SourceLocation loc) {
-    if (loc.line <= 0) {
-        return "<invalid>";
-    }
-    std::ostringstream out;
-    out << "<line:" << loc.line << ':' << loc.column << '>';
-    return out.str();
-}
-
-std::string arraySuffix(std::size_t rank) {
-    std::string suffix;
-    for (std::size_t i = 0; i < rank; ++i) {
-        suffix += "[]";
-    }
-    return suffix;
-}
+std::string normalizedIntLiteralText(const std::string &text);
+std::string normalizedFloatLiteralText(const std::string &text);
 
 std::string varType(const ast::VarDecl &decl) {
-    if (decl.type.isArray()) {
-        return ast::typeToString(decl.type);
-    }
-    return ast::typeToString(decl.type) + arraySuffix(decl.dimensions.size());
+    return ast::typeToString(decl.type);
 }
 
 std::string paramType(const ast::ParamDecl &decl) {
-    if (decl.type.isArray()) {
-        return ast::typeToString(decl.type);
-    }
-    const std::size_t fallbackRank = decl.isArray ? decl.dimensions.size() + 1 : 0;
-    return ast::typeToString(decl.type) + arraySuffix(fallbackRank);
+    return ast::typeToString(decl.type);
 }
 
 std::string functionType(const ast::FunctionDecl &decl) {
@@ -60,6 +42,27 @@ std::string exprType(const ast::Expr &expr, const char *fallback = nullptr) {
     return fallback == nullptr ? "" : fallback;
 }
 
+std::string normalizedIntLiteralText(const std::string &text) {
+    try {
+        return std::to_string(std::stoll(text, nullptr, 0));
+    } catch (const std::exception &) {
+        return text;
+    }
+}
+
+std::string normalizedFloatLiteralText(const std::string &text) {
+    errno = 0;
+    char *end = nullptr;
+    const float value = std::strtof(text.c_str(), &end);
+    if (errno != 0 || end == text.c_str()) {
+        return text;
+    }
+
+    char buffer[64];
+    std::snprintf(buffer, sizeof(buffer), "%.6e", value);
+    return buffer;
+}
+
 void appendExprType(std::ostringstream &out, const ast::Expr &expr,
                     const char *fallback = nullptr) {
     const std::string type = exprType(expr, fallback);
@@ -68,12 +71,41 @@ void appendExprType(std::ostringstream &out, const ast::Expr &expr,
     }
 }
 
+const char *declKind(const ast::Decl *decl) {
+    if (decl == nullptr) {
+        return nullptr;
+    }
+    if (dynamic_cast<const ast::VarDecl *>(decl) != nullptr) {
+        return "Var";
+    }
+    if (dynamic_cast<const ast::ParamDecl *>(decl) != nullptr) {
+        return "ParmVar";
+    }
+    if (dynamic_cast<const ast::FunctionDecl *>(decl) != nullptr) {
+        return "Function";
+    }
+    return "Decl";
+}
+
+std::string declType(const ast::Decl *decl) {
+    if (const auto *var = dynamic_cast<const ast::VarDecl *>(decl)) {
+        return varType(*var);
+    }
+    if (const auto *param = dynamic_cast<const ast::ParamDecl *>(decl)) {
+        return paramType(*param);
+    }
+    if (const auto *func = dynamic_cast<const ast::FunctionDecl *>(decl)) {
+        return functionType(*func);
+    }
+    return "";
+}
+
 } // namespace
 
 ASTDumper::ASTDumper(std::ostream &out) : out_(out) {}
 
 void ASTDumper::dump(const ast::TranslationUnit &unit) {
-    out_ << "TranslationUnitDecl " << location(unit.location()) << '\n';
+    out_ << "TranslationUnitDecl\n";
     for (std::size_t i = 0; i < unit.declarations.size(); ++i) {
         dumpDecl(*unit.declarations[i], "", i + 1 == unit.declarations.size());
     }
@@ -83,8 +115,8 @@ void ASTDumper::dumpDecl(const ast::Decl &decl, const std::string &prefix,
                          bool isLast) {
     if (const auto *var = dynamic_cast<const ast::VarDecl *>(&decl)) {
         std::ostringstream text;
-        text << "VarDecl " << location(var->location()) << " " << var->name
-             << " '" << varType(*var) << "'";
+        text << "VarDecl ";
+        text << var->name << " '" << varType(*var) << "'";
         writeNode(prefix, isLast, text.str());
         dumpVarDeclChildren(*var, prefix, isLast);
         return;
@@ -92,7 +124,8 @@ void ASTDumper::dumpDecl(const ast::Decl &decl, const std::string &prefix,
 
     if (const auto *func = dynamic_cast<const ast::FunctionDecl *>(&decl)) {
         std::ostringstream text;
-        text << "FunctionDecl " << location(func->location()) << " " << func->name
+        text << "FunctionDecl ";
+        text << func->name
              << " '" << functionType(*func) << "'";
         writeNode(prefix, isLast, text.str());
 
@@ -116,7 +149,7 @@ void ASTDumper::dumpStmt(const ast::Stmt &stmt, const std::string &prefix,
                          bool isLast) {
     if (const auto *compound = dynamic_cast<const ast::CompoundStmt *>(&stmt)) {
         std::ostringstream text;
-        text << "CompoundStmt " << location(compound->location());
+        text << "CompoundStmt";
         writeNode(prefix, isLast, text.str());
 
         const std::string nextPrefix = childPrefix(prefix, isLast);
@@ -129,7 +162,7 @@ void ASTDumper::dumpStmt(const ast::Stmt &stmt, const std::string &prefix,
 
     if (const auto *declStmt = dynamic_cast<const ast::DeclStmt *>(&stmt)) {
         std::ostringstream text;
-        text << "DeclStmt " << location(declStmt->location());
+        text << "DeclStmt";
         writeNode(prefix, isLast, text.str());
 
         const std::string nextPrefix = childPrefix(prefix, isLast);
@@ -140,29 +173,19 @@ void ASTDumper::dumpStmt(const ast::Stmt &stmt, const std::string &prefix,
         return;
     }
 
-    if (const auto *exprStmt = dynamic_cast<const ast::ExprStmt *>(&stmt)) {
+    if (dynamic_cast<const ast::NullStmt *>(&stmt) != nullptr) {
         std::ostringstream text;
-        text << "ExprStmt " << location(exprStmt->location());
+        text << "NullStmt";
         writeNode(prefix, isLast, text.str());
-        if (exprStmt->expression != nullptr) {
-            dumpExpr(*exprStmt->expression, childPrefix(prefix, isLast), true);
-        }
-        return;
-    }
-
-    if (const auto *assign = dynamic_cast<const ast::AssignStmt *>(&stmt)) {
-        std::ostringstream text;
-        text << "AssignStmt " << location(assign->location());
-        writeNode(prefix, isLast, text.str());
-        const std::string nextPrefix = childPrefix(prefix, isLast);
-        dumpExpr(*assign->target, nextPrefix, false);
-        dumpExpr(*assign->value, nextPrefix, true);
         return;
     }
 
     if (const auto *ifStmt = dynamic_cast<const ast::IfStmt *>(&stmt)) {
         std::ostringstream text;
-        text << "IfStmt " << location(ifStmt->location());
+        text << "IfStmt";
+        if (ifStmt->elseBranch != nullptr) {
+            text << " has_else";
+        }
         writeNode(prefix, isLast, text.str());
 
         const bool hasElse = ifStmt->elseBranch != nullptr;
@@ -177,7 +200,7 @@ void ASTDumper::dumpStmt(const ast::Stmt &stmt, const std::string &prefix,
 
     if (const auto *whileStmt = dynamic_cast<const ast::WhileStmt *>(&stmt)) {
         std::ostringstream text;
-        text << "WhileStmt " << location(whileStmt->location());
+        text << "WhileStmt";
         writeNode(prefix, isLast, text.str());
 
         const std::string nextPrefix = childPrefix(prefix, isLast);
@@ -188,21 +211,21 @@ void ASTDumper::dumpStmt(const ast::Stmt &stmt, const std::string &prefix,
 
     if (dynamic_cast<const ast::BreakStmt *>(&stmt) != nullptr) {
         std::ostringstream text;
-        text << "BreakStmt " << location(stmt.location());
+        text << "BreakStmt";
         writeNode(prefix, isLast, text.str());
         return;
     }
 
     if (dynamic_cast<const ast::ContinueStmt *>(&stmt) != nullptr) {
         std::ostringstream text;
-        text << "ContinueStmt " << location(stmt.location());
+        text << "ContinueStmt";
         writeNode(prefix, isLast, text.str());
         return;
     }
 
     if (const auto *returnStmt = dynamic_cast<const ast::ReturnStmt *>(&stmt)) {
         std::ostringstream text;
-        text << "ReturnStmt " << location(returnStmt->location());
+        text << "ReturnStmt";
         writeNode(prefix, isLast, text.str());
         if (returnStmt->value != nullptr) {
             dumpExpr(*returnStmt->value, childPrefix(prefix, isLast), true);
@@ -222,44 +245,89 @@ void ASTDumper::dumpExpr(const ast::Expr &expr, const std::string &prefix,
                          bool isLast) {
     if (const auto *literal = dynamic_cast<const ast::IntegerLiteral *>(&expr)) {
         std::ostringstream text;
-        text << "IntegerLiteral " << location(literal->location());
+        text << "IntegerLiteral";
         appendExprType(text, *literal, "int");
-        text << ' ' << literal->text;
+        text << ' ' << normalizedIntLiteralText(literal->text);
         writeNode(prefix, isLast, text.str());
         return;
     }
 
     if (const auto *literal = dynamic_cast<const ast::FloatLiteral *>(&expr)) {
         std::ostringstream text;
-        text << "FloatingLiteral " << location(literal->location());
+        text << "FloatingLiteral";
         appendExprType(text, *literal, "float");
-        text << ' ' << literal->text;
+        text << ' ' << normalizedFloatLiteralText(literal->text);
         writeNode(prefix, isLast, text.str());
         return;
     }
 
     if (const auto *literal = dynamic_cast<const ast::StringLiteral *>(&expr)) {
         std::ostringstream text;
-        text << "StringLiteral " << location(literal->location());
+        text << "StringLiteral";
         appendExprType(text, *literal, "string");
         text << ' ' << literal->text;
         writeNode(prefix, isLast, text.str());
         return;
     }
 
+    if (const auto *cast = dynamic_cast<const ast::ImplicitCastExpr *>(&expr)) {
+        std::ostringstream text;
+        text << "ImplicitCastExpr";
+        appendExprType(text, *cast, ast::toString(cast->targetType.base));
+        text << " <" << ast::toString(cast->kind) << ">";
+        writeNode(prefix, isLast, text.str());
+        dumpExpr(*cast->subExpr, childPrefix(prefix, isLast), true);
+        return;
+    }
+
+    if (const auto *paren = dynamic_cast<const ast::ParenExpr *>(&expr)) {
+        std::ostringstream text;
+        text << "ParenExpr";
+        appendExprType(text, *paren);
+        if (dynamic_cast<const ast::DeclRefExpr *>(paren->subExpr.get()) != nullptr ||
+            dynamic_cast<const ast::ArraySubscriptExpr *>(paren->subExpr.get()) != nullptr ||
+            dynamic_cast<const ast::ParenExpr *>(paren->subExpr.get()) != nullptr) {
+            text << " lvalue";
+        }
+        writeNode(prefix, isLast, text.str());
+        dumpExpr(*paren->subExpr, childPrefix(prefix, isLast), true);
+        return;
+    }
+
     if (const auto *ref = dynamic_cast<const ast::DeclRefExpr *>(&expr)) {
         std::ostringstream text;
-        text << "DeclRefExpr " << location(ref->location());
-        appendExprType(text, *ref);
-        text << ' ' << ref->name;
+        text << "DeclRefExpr";
+        if (const char *kind = declKind(ref->referencedDecl)) {
+            const bool refersToFunction =
+                dynamic_cast<const ast::FunctionDecl *>(ref->referencedDecl) != nullptr;
+            const std::string referencedType = declType(ref->referencedDecl);
+            if (!referencedType.empty()) {
+                text << " '" << referencedType << "'";
+            } else {
+                appendExprType(text, *ref);
+            }
+            if (!refersToFunction) {
+                text << " lvalue";
+            }
+            text << ' ' << kind << " '" << ref->name << "'";
+            if (!referencedType.empty()) {
+                text << " '" << referencedType << "'";
+            }
+        } else {
+            appendExprType(text, *ref);
+            text << " '" << ref->name << "'";
+        }
         writeNode(prefix, isLast, text.str());
         return;
     }
 
     if (const auto *subscript = dynamic_cast<const ast::ArraySubscriptExpr *>(&expr)) {
         std::ostringstream text;
-        text << "ArraySubscriptExpr " << location(subscript->location());
+        text << "ArraySubscriptExpr";
         appendExprType(text, *subscript);
+        if (subscript->hasType) {
+            text << " lvalue";
+        }
         writeNode(prefix, isLast, text.str());
         const std::string nextPrefix = childPrefix(prefix, isLast);
         dumpExpr(*subscript->base, nextPrefix, false);
@@ -269,9 +337,14 @@ void ASTDumper::dumpExpr(const ast::Expr &expr, const std::string &prefix,
 
     if (const auto *unary = dynamic_cast<const ast::UnaryOperator *>(&expr)) {
         std::ostringstream text;
-        text << "UnaryOperator " << location(unary->location()) << " '"
-             << ast::toString(unary->opcode) << "'";
-        appendExprType(text, *unary);
+        text << "UnaryOperator";
+        if (unary->hasType) {
+            text << " '" << ast::typeToString(unary->inferredType) << "'";
+        }
+        text << " prefix '" << ast::toString(unary->opcode) << "'";
+        if (unary->opcode != ast::UnaryOpcode::Minus) {
+            text << " cannot overflow";
+        }
         writeNode(prefix, isLast, text.str());
         dumpExpr(*unary->operand, childPrefix(prefix, isLast), true);
         return;
@@ -279,9 +352,9 @@ void ASTDumper::dumpExpr(const ast::Expr &expr, const std::string &prefix,
 
     if (const auto *binary = dynamic_cast<const ast::BinaryOperator *>(&expr)) {
         std::ostringstream text;
-        text << "BinaryOperator " << location(binary->location()) << " '"
-             << ast::toString(binary->opcode) << "'";
+        text << "BinaryOperator";
         appendExprType(text, *binary);
+        text << " '" << ast::toString(binary->opcode) << "'";
         writeNode(prefix, isLast, text.str());
         const std::string nextPrefix = childPrefix(prefix, isLast);
         dumpExpr(*binary->lhs, nextPrefix, false);
@@ -291,9 +364,9 @@ void ASTDumper::dumpExpr(const ast::Expr &expr, const std::string &prefix,
 
     if (const auto *call = dynamic_cast<const ast::CallExpr *>(&expr)) {
         std::ostringstream text;
-        text << "CallExpr " << location(call->location());
+        text << "CallExpr";
         appendExprType(text, *call);
-        text << ' ' << call->callee;
+        text << " '" << call->callee << "'";
         writeNode(prefix, isLast, text.str());
         const std::string nextPrefix = childPrefix(prefix, isLast);
         for (std::size_t i = 0; i < call->arguments.size(); ++i) {
@@ -304,13 +377,32 @@ void ASTDumper::dumpExpr(const ast::Expr &expr, const std::string &prefix,
 
     if (const auto *list = dynamic_cast<const ast::InitListExpr *>(&expr)) {
         std::ostringstream text;
-        text << "InitListExpr " << location(list->location());
+        text << "InitListExpr";
         appendExprType(text, *list);
         writeNode(prefix, isLast, text.str());
         const std::string nextPrefix = childPrefix(prefix, isLast);
-        for (std::size_t i = 0; i < list->values.size(); ++i) {
-            dumpExpr(*list->values[i], nextPrefix, i + 1 == list->values.size());
+        const std::size_t totalNodes =
+            list->values.size() + (list->arrayFiller != nullptr ? 1U : 0U);
+        std::size_t nodeIndex = 0;
+        if (list->arrayFiller != nullptr) {
+            ++nodeIndex;
+            std::ostringstream filler;
+            filler << "array_filler: ImplicitValueInitExpr '"
+                   << ast::typeToString(list->arrayFiller->inferredType) << "'";
+            writeNode(nextPrefix, nodeIndex == totalNodes, filler.str());
         }
+        for (std::size_t i = 0; i < list->values.size(); ++i) {
+            ++nodeIndex;
+            dumpExpr(*list->values[i], nextPrefix, nodeIndex == totalNodes);
+        }
+        return;
+    }
+
+    if (const auto *implicitInit = dynamic_cast<const ast::ImplicitValueInitExpr *>(&expr)) {
+        std::ostringstream text;
+        text << "ImplicitValueInitExpr";
+        appendExprType(text, *implicitInit, ast::toString(implicitInit->targetType.base));
+        writeNode(prefix, isLast, text.str());
         return;
     }
 
@@ -321,31 +413,27 @@ void ASTDumper::dumpVarDeclChildren(const ast::VarDecl &decl,
                                     const std::string &prefix,
                                     bool isLastParent) {
     const std::string nextPrefix = childPrefix(prefix, isLastParent);
-    const std::size_t childCount =
-        decl.dimensions.size() + (decl.initializer != nullptr ? 1 : 0);
-    std::size_t childIndex = 0;
-
-    for (const auto &dimension : decl.dimensions) {
-        ++childIndex;
-        dumpExpr(*dimension, nextPrefix, childIndex == childCount);
-    }
-
     if (decl.initializer != nullptr) {
         dumpExpr(*decl.initializer, nextPrefix, true);
     }
 }
 
+void ASTDumper::dumpParamDeclChildren(const ast::ParamDecl &decl,
+                                      const std::string &prefix,
+                                      bool isLastParent) {
+    (void)decl;
+    (void)prefix;
+    (void)isLastParent;
+}
+
 void ASTDumper::dumpParamDecl(const ast::ParamDecl &decl, const std::string &prefix,
                               bool isLast) {
     std::ostringstream text;
-    text << "ParmVarDecl " << location(decl.location()) << " " << decl.name
+    text << "ParmVarDecl ";
+    text << decl.name
          << " '" << paramType(decl) << "'";
     writeNode(prefix, isLast, text.str());
-
-    const std::string nextPrefix = childPrefix(prefix, isLast);
-    for (std::size_t i = 0; i < decl.dimensions.size(); ++i) {
-        dumpExpr(*decl.dimensions[i], nextPrefix, i + 1 == decl.dimensions.size());
-    }
+    dumpParamDeclChildren(decl, prefix, isLast);
 }
 
 void ASTDumper::writeNode(const std::string &prefix, bool isLast,

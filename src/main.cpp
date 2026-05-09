@@ -158,6 +158,7 @@ int main(int argc, char *argv[]) {
     Interpreter interpreter(std::cin);
     try {
         const int returnCode = interpreter.run(*ast);
+        std::cout << interpreter.takeTimerOutput();
         const std::string result =
             formatResult(interpreter.takeOutput(), returnCode);
         if (options.outputPath.empty()) {
