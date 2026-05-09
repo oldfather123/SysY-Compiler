@@ -113,22 +113,37 @@ git lfs pull
 unzip test.zip
 ```
 
-### 6.3 运行测试脚本
+### 6.3 运行各种脚本
 
-运行并对比一个测试目录：
+当前主要包含以下两个脚本：
+
+- `src/scripts/test.sh`：运行 SysY 测试用例，并将程序输出与标准输出进行对比。
+- `src/scripts/ast_diff.sh`：生成并比较 Clang AST 与本项目导出的 SysY AST，便于分析语义结构差异。
+
+常见用法如下：
 
 ```bash
+# 运行整个测试目录
 src/scripts/test.sh test/2026/functional
-```
 
-运行并对比单个 `.sy` 文件：
-
-```bash
+# 运行单个测试文件
 src/scripts/test.sh test/2026/functional/00_main.sy
+
+# 对比整个测试目录的 AST
+src/scripts/ast_diff.sh test/2026/functional
 ```
 
-脚本默认单个用例超时时间为 25 秒，可通过 `RUN_SY_TIMEOUT` 调整：
+脚本输出默认写入：
+
+```text
+src/test_output/<target-dir>/
+```
+
+如需调整超时时间，可使用环境变量：
 
 ```bash
 RUN_SY_TIMEOUT=60s src/scripts/test.sh test/2026/functional
+AST_DIFF_TIMEOUT=60s src/scripts/ast_diff.sh test/2026/functional
 ```
+
+更完整的参数说明和输出格式说明见 src/scripts/README.md。
