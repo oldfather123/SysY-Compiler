@@ -11,14 +11,6 @@
 #include <stdexcept>
 #include <utility>
 
-namespace {
-
-std::string unsupported(const std::string &feature) {
-    return "unsupported SysY feature in interpreter: " + feature;
-}
-
-} // namespace
-
 Interpreter::Value Interpreter::Value::fromInt(int value) {
     Value result;
     result.kind = Kind::Int;
@@ -81,9 +73,15 @@ std::string Interpreter::takeOutput() {
     return output_.str();
 }
 
+std::string Interpreter::takeTimerOutput() {
+    return timerOutput_.str();
+}
+
 void Interpreter::reset() {
     output_.str("");
     output_.clear();
+    timerOutput_.str("");
+    timerOutput_.clear();
     scopes_.clear();
     scopes_.emplace_back();
     bindings_.clear();
@@ -113,10 +111,6 @@ void Interpreter::popScope() {
         }
     }
     scopes_.pop_back();
-}
-
-void Interpreter::declareScalar(const ast::Decl &decl, int value, bool isConst) {
-    declareScalar(decl, ScalarType::Int, Value::fromInt(value), isConst);
 }
 
 void Interpreter::declareScalar(const ast::Decl &decl, ScalarType type, const Value &value,
@@ -225,9 +219,17 @@ void Interpreter::setRuntimeError(std::string message) {
 
 int Interpreter::runtimeReadInt(void *ctx, int *value) {
     auto *self = static_cast<Interpreter *>(ctx);
-    if (!(self->input_ >> *value)) {
+    std::string token;
+    if (!(self->input_ >> token)) {
         *value = 0;
         self->setRuntimeError("getint input exhausted");
+        return 0;
+    }
+    try {
+        *value = parseIntLiteral(token);
+    } catch (const std::exception &) {
+        *value = 0;
+        self->setRuntimeError("invalid integer input");
         return 0;
     }
     return 1;
@@ -299,13 +301,13 @@ int Interpreter::runtimeGetFArray(void *ctx, float values[]) {
 
 void Interpreter::appendFloatHex(float value) {
     char buffer[64];
-    std::snprintf(buffer, sizeof(buffer), "%a", static_cast<double>(value));
+    std::snprintf(buffer, sizeof(buffer), "%a", value);
     output_ << buffer;
 }
 
 void Interpreter::appendFloatDecimal(float value) {
     char buffer[64];
-    std::snprintf(buffer, sizeof(buffer), "%f", static_cast<double>(value));
+    std::snprintf(buffer, sizeof(buffer), "%f", value);
     output_ << buffer;
 }
 
@@ -376,12 +378,12 @@ void Interpreter::appendTimerSummary() {
         normalizeTimerSlot(0);
         char lineBuffer[64];
         std::snprintf(lineBuffer, sizeof(lineBuffer),
-                      "Timer@%04d-%04d: %dH-%dM-%dS-%dus\n", timerL1_[i],
+                      "     Timer@%04d-%04d: %dH-%dM-%dS-%dus\n", timerL1_[i],
                       timerL2_[i], timerH_[i], timerM_[i], timerS_[i], timerUs_[i]);
-        output_ << lineBuffer;
+        timerOutput_ << lineBuffer;
     }
-    output_ << "TOTAL: " << timerH_[0] << "H-" << timerM_[0] << "M-" << timerS_[0]
-            << "S-" << timerUs_[0] << "us\n";
+    timerOutput_ << "       TOTAL: " << timerH_[0] << "H-" << timerM_[0] << "M-"
+                 << timerS_[0] << "S-" << timerUs_[0] << "us\n";
 }
 
 void Interpreter::startTimer(int lineno) {
@@ -410,10 +412,10 @@ void Interpreter::stopTimer(int lineno) {
 
 bool Interpreter::isScalarDecl(const ast::Decl &decl) const {
     if (const auto *param = dynamic_cast<const ast::ParamDecl *>(&decl)) {
-        return !param->isArray && param->type.isScalar() && param->dimensions.empty();
+        return !param->type.isPointer && param->type.isScalar();
     }
     if (const auto *var = dynamic_cast<const ast::VarDecl *>(&decl)) {
-        return !var->type.isArray() && var->dimensions.empty();
+        return !var->type.isArray();
     }
     return false;
 }
@@ -457,6 +459,10 @@ bool Interpreter::isMemoizableExpr(
         dynamic_cast<const ast::FloatLiteral *>(&expr) != nullptr ||
         dynamic_cast<const ast::StringLiteral *>(&expr) != nullptr) {
         return true;
+    }
+
+    if (const auto *cast = dynamic_cast<const ast::ImplicitCastExpr *>(&expr)) {
+        return isMemoizableExpr(*cast->subExpr, locals);
     }
 
     if (const auto *ref = dynamic_cast<const ast::DeclRefExpr *>(&expr)) {
@@ -524,17 +530,8 @@ bool Interpreter::isMemoizableStmt(
         return true;
     }
 
-    if (const auto *exprStmt = dynamic_cast<const ast::ExprStmt *>(&stmt)) {
-        return exprStmt->expression == nullptr ||
-               isMemoizableExpr(*exprStmt->expression, locals);
-    }
-
-    if (const auto *assign = dynamic_cast<const ast::AssignStmt *>(&stmt)) {
-        const auto *target = dynamic_cast<const ast::DeclRefExpr *>(assign->target.get());
-        return target != nullptr && target->referencedDecl != nullptr &&
-               locals.find(target->referencedDecl) != locals.end() &&
-               isScalarDecl(*target->referencedDecl) &&
-               isMemoizableExpr(*assign->value, locals);
+    if (dynamic_cast<const ast::NullStmt *>(&stmt) != nullptr) {
+        return true;
     }
 
     if (const auto *ifStmt = dynamic_cast<const ast::IfStmt *>(&stmt)) {
@@ -780,7 +777,7 @@ Interpreter::Value Interpreter::callAstFunction(const ast::FunctionDecl &functio
         for (std::size_t i = 0; i < function.params.size(); ++i) {
             const ast::ParamDecl &param = *function.params[i];
             const ScalarType paramType = scalarTypeOf(param.type.base);
-            if (!param.isArray) {
+            if (!param.type.isPointer) {
                 declareScalar(param, paramType, args[i], false);
                 continue;
             }
@@ -791,7 +788,7 @@ Interpreter::Value Interpreter::callAstFunction(const ast::FunctionDecl &functio
                                          param.name);
             }
 
-            std::vector<int> tailDims = evalParamTailDimensions(param);
+            std::vector<int> tailDims = dimensionsOf(param.type);
             const std::size_t available = arrayStorageSize(ref) - ref.offset;
             if (tailDims.empty()) {
                 ref.dims = {static_cast<int>(available)};
@@ -961,10 +958,8 @@ void Interpreter::executeDecl(const ast::Decl &decl) {
 
 void Interpreter::executeVarDecl(const ast::VarDecl &decl) {
     const ScalarType declType = scalarTypeOf(decl.type.base);
-    if (decl.type.isArray() || !decl.dimensions.empty()) {
-        const std::vector<int> dims =
-            decl.type.isArray() ? dimensionsOf(decl.type)
-                                : evalDimensions(decl.dimensions);
+    if (decl.type.isArray()) {
+        const std::vector<int> dims = dimensionsOf(decl.type);
         declareArray(decl, dims, buildInitValues(dims, decl.initializer.get()),
                      decl.type.isConst, declType);
         return;
@@ -999,41 +994,7 @@ void Interpreter::executeStmt(const ast::Stmt &stmt) {
         return;
     }
 
-    if (const auto *exprStmt = dynamic_cast<const ast::ExprStmt *>(&stmt)) {
-        if (exprStmt->expression != nullptr) {
-            evalExpr(*exprStmt->expression);
-        }
-        return;
-    }
-
-    if (const auto *assign = dynamic_cast<const ast::AssignStmt *>(&stmt)) {
-        if (const auto *ref = dynamic_cast<const ast::DeclRefExpr *>(assign->target.get())) {
-            Variable &variable = resolveVariable(*ref);
-            if (!variable.isArray()) {
-                if (variable.isConst) {
-                    throw std::runtime_error("cannot assign to const: " + ref->name);
-                }
-                const ScalarType variableType = variable.type;
-                Value value = variableType == ScalarType::Int &&
-                                      isIntScalarExpr(*assign->value)
-                                  ? Value::fromInt(evalInt(*assign->value))
-                                  : convertValue(evalExpr(*assign->value), variableType);
-
-                Variable &target = resolveVariable(*ref);
-                if (variableType == ScalarType::Int) {
-                    target.value = value.intValue;
-                } else {
-                    target.floatValue = value.floatValue;
-                }
-                return;
-            }
-        }
-
-        ArrayRef ref = evalLValRef(*assign->target);
-        if (!ref.dims.empty()) {
-            throw std::runtime_error("cannot assign to array slice");
-        }
-        setArrayElement(ref, 0, evalExpr(*assign->value));
+    if (dynamic_cast<const ast::NullStmt *>(&stmt) != nullptr) {
         return;
     }
 
@@ -1105,6 +1066,25 @@ Interpreter::Value Interpreter::evalExpr(const ast::Expr &expr) {
         return Value::fromString(parseStringLiteral(literal->text));
     }
 
+    if (const auto *cast = dynamic_cast<const ast::ImplicitCastExpr *>(&expr)) {
+        switch (cast->kind) {
+        case ast::CastKind::LValueToRValue:
+        case ast::CastKind::ArrayToPointerDecay:
+            return evalExpr(*cast->subExpr);
+        case ast::CastKind::IntToFloat:
+        case ast::CastKind::FloatToInt:
+            return convertValue(evalExpr(*cast->subExpr),
+                                scalarTypeOf(cast->targetType.base));
+        case ast::CastKind::IntToBool:
+        case ast::CastKind::FloatToBool:
+            return Value::fromInt(isTruthy(evalExpr(*cast->subExpr)) ? 1 : 0);
+        }
+    }
+
+    if (const auto *paren = dynamic_cast<const ast::ParenExpr *>(&expr)) {
+        return evalExpr(*paren->subExpr);
+    }
+
     if (const auto *ref = dynamic_cast<const ast::DeclRefExpr *>(&expr)) {
         Variable &variable = resolveVariable(*ref);
         if (!variable.isArray()) {
@@ -1140,6 +1120,36 @@ Interpreter::Value Interpreter::evalExpr(const ast::Expr &expr) {
     }
 
     if (const auto *binary = dynamic_cast<const ast::BinaryOperator *>(&expr)) {
+        if (binary->opcode == ast::BinaryOpcode::Assign) {
+            const Value rhs = evalExpr(*binary->rhs);
+
+            if (const auto *ref = dynamic_cast<const ast::DeclRefExpr *>(binary->lhs.get())) {
+                Variable &variable = resolveVariable(*ref);
+                if (!variable.isArray()) {
+                    if (variable.isConst) {
+                        throw std::runtime_error("cannot assign to const: " + ref->name);
+                    }
+                    const ScalarType variableType = variable.type;
+                    const Value value = convertValue(rhs, variableType);
+                    if (variableType == ScalarType::Int) {
+                        variable.value = value.intValue;
+                    } else {
+                        variable.floatValue = value.floatValue;
+                    }
+                    return value;
+                }
+            }
+
+            ArrayRef ref = evalLValRef(*binary->lhs);
+            if (!ref.dims.empty()) {
+                throw std::runtime_error("cannot assign to array slice");
+            }
+            const ScalarType elementType = ref.object->type;
+            const Value value = convertValue(rhs, elementType);
+            setArrayElement(ref, 0, value);
+            return value;
+        }
+
         switch (binary->opcode) {
         case ast::BinaryOpcode::LogicalAnd:
             if (!isTruthy(evalExpr(*binary->lhs))) {
@@ -1262,7 +1272,8 @@ Interpreter::Value Interpreter::evalExpr(const ast::Expr &expr) {
     }
 
     if (dynamic_cast<const ast::InitListExpr *>(&expr) != nullptr) {
-        throw std::runtime_error(unsupported("brace initializer for scalar"));
+        throw std::runtime_error(
+            "unsupported SysY feature in interpreter: brace initializer for scalar");
     }
 
     throw std::runtime_error("unsupported AST expression");
@@ -1275,6 +1286,10 @@ int Interpreter::evalInt(const ast::Expr &expr) {
 
     if (const auto *literal = dynamic_cast<const ast::IntegerLiteral *>(&expr)) {
         return parseIntLiteral(literal->text);
+    }
+
+    if (const auto *paren = dynamic_cast<const ast::ParenExpr *>(&expr)) {
+        return evalInt(*paren->subExpr);
     }
 
     if (const auto *ref = dynamic_cast<const ast::DeclRefExpr *>(&expr)) {
@@ -1309,6 +1324,9 @@ int Interpreter::evalInt(const ast::Expr &expr) {
     }
 
     if (const auto *binary = dynamic_cast<const ast::BinaryOperator *>(&expr)) {
+        if (binary->opcode == ast::BinaryOpcode::Assign) {
+            return requireInt(evalExpr(expr));
+        }
         if (!isIntScalarExpr(*binary->lhs) || !isIntScalarExpr(*binary->rhs)) {
             return requireInt(evalExpr(expr));
         }
@@ -1349,6 +1367,8 @@ int Interpreter::evalInt(const ast::Expr &expr) {
         case ast::BinaryOpcode::LogicalAnd:
         case ast::BinaryOpcode::LogicalOr:
             break;
+        default:
+            break;
         }
     }
 
@@ -1361,11 +1381,24 @@ int Interpreter::evalInt(const ast::Expr &expr) {
 
 bool Interpreter::isIntScalarExpr(const ast::Expr &expr) const {
     return expr.hasType && expr.inferredType.base == ast::BuiltinType::Int &&
-           expr.inferredType.shape.empty();
+           !expr.inferredType.isPointer && expr.inferredType.shape.empty();
 }
 
 Interpreter::ArrayRef Interpreter::evalLValRef(const ast::Expr &expr) {
     const ast::Expr *current = &expr;
+    while (const auto *paren = dynamic_cast<const ast::ParenExpr *>(current)) {
+        current = paren->subExpr.get();
+    }
+    while (const auto *cast = dynamic_cast<const ast::ImplicitCastExpr *>(current)) {
+        if (cast->kind != ast::CastKind::ArrayToPointerDecay &&
+            cast->kind != ast::CastKind::LValueToRValue) {
+            break;
+        }
+        current = cast->subExpr.get();
+        while (const auto *paren = dynamic_cast<const ast::ParenExpr *>(current)) {
+            current = paren->subExpr.get();
+        }
+    }
     std::array<const ast::Expr *, 64> indices{};
     std::size_t indexCount = 0;
     while (const auto *subscript =
@@ -1375,6 +1408,19 @@ Interpreter::ArrayRef Interpreter::evalLValRef(const ast::Expr &expr) {
         }
         indices[indexCount++] = subscript->index.get();
         current = subscript->base.get();
+        while (const auto *paren = dynamic_cast<const ast::ParenExpr *>(current)) {
+            current = paren->subExpr.get();
+        }
+        while (const auto *cast = dynamic_cast<const ast::ImplicitCastExpr *>(current)) {
+            if (cast->kind != ast::CastKind::ArrayToPointerDecay &&
+                cast->kind != ast::CastKind::LValueToRValue) {
+                break;
+            }
+            current = cast->subExpr.get();
+            while (const auto *paren = dynamic_cast<const ast::ParenExpr *>(current)) {
+                current = paren->subExpr.get();
+            }
+        }
     }
 
     const auto *root = dynamic_cast<const ast::DeclRefExpr *>(current);
@@ -1411,33 +1457,6 @@ Interpreter::ArrayRef Interpreter::evalLValRef(const ast::Expr &expr) {
     result.dims.assign(variable.dims.begin() + static_cast<std::ptrdiff_t>(indexCount),
                        variable.dims.end());
     return result;
-}
-
-std::vector<int> Interpreter::evalDimensions(
-    const std::vector<std::unique_ptr<ast::Expr>> &dims) {
-    std::vector<int> result;
-    result.reserve(dims.size());
-    for (const std::unique_ptr<ast::Expr> &dimension : dims) {
-        const int value = evalInt(*dimension);
-        if (value <= 0) {
-            throw std::runtime_error("array dimension must be positive");
-        }
-        result.push_back(value);
-    }
-    return result;
-}
-
-std::vector<int> Interpreter::evalParamTailDimensions(const ast::ParamDecl &param) {
-    std::vector<int> dims;
-    dims.reserve(param.dimensions.size());
-    for (const std::unique_ptr<ast::Expr> &dimension : param.dimensions) {
-        const int value = evalInt(*dimension);
-        if (value <= 0) {
-            throw std::runtime_error("array parameter dimension must be positive");
-        }
-        dims.push_back(value);
-    }
-    return dims;
 }
 
 std::vector<int> Interpreter::dimensionsOf(ast::Type type) const {
@@ -1481,22 +1500,26 @@ std::size_t Interpreter::fillInitValue(const ast::Expr &initializer,
     const std::size_t currentSize = aggregateSize(dims, level);
     const std::size_t aggregateEnd = std::min(total, start + currentSize);
     std::size_t pos = start;
-    for (const std::unique_ptr<ast::Expr> &value : list->values) {
-        if (pos >= aggregateEnd) {
+    for (std::size_t i = 0; i < list->values.size(); ++i) {
+        const std::unique_ptr<ast::Expr> &value = list->values[i];
+        const bool hasOffset = list->valueOffsets.size() == list->values.size();
+        const std::size_t valuePos =
+            hasOffset ? start + list->valueOffsets[i] : pos;
+        if (valuePos >= aggregateEnd) {
             break;
         }
 
         if (dynamic_cast<const ast::InitListExpr *>(value.get()) == nullptr) {
-            pos = fillInitValue(*value, dims, level + 1, pos, values);
+            pos = fillInitValue(*value, dims, level + 1, valuePos, values);
             continue;
         }
 
         const std::size_t childLevel =
-            initializerChildLevel(dims, level, start, pos);
+            initializerChildLevel(dims, level, start, valuePos);
         if (childLevel >= dims.size()) {
             continue;
         }
-        pos = fillInitValue(*value, dims, childLevel, pos, values);
+        pos = fillInitValue(*value, dims, childLevel, valuePos, values);
     }
     return start + currentSize;
 }

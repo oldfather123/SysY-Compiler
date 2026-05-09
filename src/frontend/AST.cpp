@@ -4,37 +4,45 @@
 
 namespace ast {
 
-bool Type::isArray() const {
-    return !shape.empty();
+namespace {
+
+void appendArrayShape(std::string &result, const std::vector<long long> &shape) {
+    for (long long dimension : shape) {
+        result += '[';
+        if (dimension > 0) {
+            result += std::to_string(dimension);
+        }
+        result += ']';
+    }
 }
 
-bool Type::isScalar() const {
-    return shape.empty() && (base == BuiltinType::Int || base == BuiltinType::Float);
+} // namespace
+
+bool Type::isArray() const noexcept {
+    return !isPointer && !shape.empty();
+}
+
+bool Type::isScalar() const noexcept {
+    return !isPointer && shape.empty() &&
+           (base == BuiltinType::Int || base == BuiltinType::Float);
 }
 
 ASTNode::ASTNode(SourceLocation location) : location_(location) {}
 
-SourceLocation ASTNode::location() const {
+const SourceLocation &ASTNode::location() const noexcept {
     return location_;
 }
 
 TranslationUnit::TranslationUnit(SourceLocation location) : ASTNode(location) {}
 
 VarDecl::VarDecl(SourceLocation location, Type type, std::string name)
-    : Decl(location), type(type), name(std::move(name)) {}
+    : Decl(location), type(std::move(type)), name(std::move(name)) {}
 
 ParamDecl::ParamDecl(SourceLocation location, Type type, std::string name)
-    : Decl(location), type(type), name(std::move(name)) {}
+    : Decl(location), type(std::move(type)), name(std::move(name)) {}
 
 FunctionDecl::FunctionDecl(SourceLocation location, Type returnType, std::string name)
-    : Decl(location), returnType(returnType), name(std::move(name)) {}
-
-ExprStmt::ExprStmt(SourceLocation location, std::unique_ptr<Expr> expression)
-    : Stmt(location), expression(std::move(expression)) {}
-
-AssignStmt::AssignStmt(SourceLocation location, std::unique_ptr<Expr> target,
-                       std::unique_ptr<Expr> value)
-    : Stmt(location), target(std::move(target)), value(std::move(value)) {}
+    : Decl(location), returnType(std::move(returnType)), name(std::move(name)) {}
 
 IfStmt::IfStmt(SourceLocation location) : Stmt(location) {}
 
@@ -51,6 +59,15 @@ FloatLiteral::FloatLiteral(SourceLocation location, std::string text)
 
 StringLiteral::StringLiteral(SourceLocation location, std::string text)
     : Expr(location), text(std::move(text)) {}
+
+ImplicitCastExpr::ImplicitCastExpr(SourceLocation location, CastKind kind,
+                                   Type targetType,
+                                   std::unique_ptr<Expr> subExpr)
+    : Expr(location), kind(kind), targetType(std::move(targetType)),
+      subExpr(std::move(subExpr)) {}
+
+ParenExpr::ParenExpr(SourceLocation location, std::unique_ptr<Expr> subExpr)
+    : Expr(location), subExpr(std::move(subExpr)) {}
 
 DeclRefExpr::DeclRefExpr(SourceLocation location, std::string name)
     : Expr(location), name(std::move(name)) {}
@@ -72,7 +89,10 @@ BinaryOperator::BinaryOperator(SourceLocation location, BinaryOpcode opcode,
 CallExpr::CallExpr(SourceLocation location, std::string callee)
     : Expr(location), callee(std::move(callee)) {}
 
-const char *toString(BuiltinType type) {
+ImplicitValueInitExpr::ImplicitValueInitExpr(SourceLocation location, Type targetType)
+    : Expr(location), targetType(std::move(targetType)) {}
+
+const char *toString(BuiltinType type) noexcept {
     switch (type) {
     case BuiltinType::Void:
         return "void";
@@ -88,7 +108,7 @@ const char *toString(BuiltinType type) {
     return "invalid";
 }
 
-const char *toString(UnaryOpcode opcode) {
+const char *toString(UnaryOpcode opcode) noexcept {
     switch (opcode) {
     case UnaryOpcode::Plus:
         return "+";
@@ -100,8 +120,10 @@ const char *toString(UnaryOpcode opcode) {
     return "?";
 }
 
-const char *toString(BinaryOpcode opcode) {
+const char *toString(BinaryOpcode opcode) noexcept {
     switch (opcode) {
+    case BinaryOpcode::Assign:
+        return "=";
     case BinaryOpcode::Mul:
         return "*";
     case BinaryOpcode::Div:
@@ -132,19 +154,38 @@ const char *toString(BinaryOpcode opcode) {
     return "?";
 }
 
-std::string typeToString(Type type) {
+const char *toString(CastKind kind) noexcept {
+    switch (kind) {
+    case CastKind::LValueToRValue:
+        return "LValueToRValue";
+    case CastKind::ArrayToPointerDecay:
+        return "ArrayToPointerDecay";
+    case CastKind::IntToFloat:
+        return "IntegralToFloating";
+    case CastKind::FloatToInt:
+        return "FloatingToIntegral";
+    case CastKind::IntToBool:
+        return "IntegralToBoolean";
+    case CastKind::FloatToBool:
+        return "FloatingToBoolean";
+    }
+    return "?";
+}
+
+std::string typeToString(const Type &type) {
     std::string result;
     if (type.isConst) {
         result += "const ";
     }
     result += toString(type.base);
-    for (long long dimension : type.shape) {
-        result += '[';
-        if (dimension > 0) {
-            result += std::to_string(dimension);
+    if (type.isPointer) {
+        if (type.shape.empty()) {
+            result += " *";
+        } else {
+            result += " (*)";
         }
-        result += ']';
     }
+    appendArrayShape(result, type.shape);
     return result;
 }
 

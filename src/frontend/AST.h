@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
@@ -10,6 +11,8 @@ struct SourceLocation {
     int line = 0;
     int column = 0;
 };
+
+class CompoundStmt;
 
 enum class BuiltinType {
     Void,
@@ -22,10 +25,11 @@ enum class BuiltinType {
 struct Type {
     BuiltinType base = BuiltinType::Invalid;
     bool isConst = false;
+    bool isPointer = false;
     std::vector<long long> shape;
 
-    bool isArray() const;
-    bool isScalar() const;
+    [[nodiscard]] bool isArray() const noexcept;
+    [[nodiscard]] bool isScalar() const noexcept;
 };
 
 enum class UnaryOpcode {
@@ -35,6 +39,7 @@ enum class UnaryOpcode {
 };
 
 enum class BinaryOpcode {
+    Assign,
     Mul,
     Div,
     Mod,
@@ -50,12 +55,21 @@ enum class BinaryOpcode {
     LogicalOr,
 };
 
+enum class CastKind {
+    LValueToRValue,
+    ArrayToPointerDecay,
+    IntToFloat,
+    FloatToInt,
+    IntToBool,
+    FloatToBool,
+};
+
 class ASTNode {
 public:
     explicit ASTNode(SourceLocation location = {});
     virtual ~ASTNode() = default;
 
-    SourceLocation location() const;
+    [[nodiscard]] const SourceLocation &location() const noexcept;
 
 private:
     SourceLocation location_;
@@ -113,7 +127,7 @@ public:
     Type returnType;
     std::string name;
     std::vector<std::unique_ptr<ParamDecl>> params;
-    std::unique_ptr<class CompoundStmt> body;
+    std::unique_ptr<CompoundStmt> body;
 };
 
 class CompoundStmt final : public Stmt {
@@ -130,20 +144,9 @@ public:
     std::vector<std::unique_ptr<VarDecl>> declarations;
 };
 
-class ExprStmt final : public Stmt {
+class NullStmt final : public Stmt {
 public:
-    explicit ExprStmt(SourceLocation location, std::unique_ptr<Expr> expression = nullptr);
-
-    std::unique_ptr<Expr> expression;
-};
-
-class AssignStmt final : public Stmt {
-public:
-    AssignStmt(SourceLocation location, std::unique_ptr<Expr> target,
-               std::unique_ptr<Expr> value);
-
-    std::unique_ptr<Expr> target;
-    std::unique_ptr<Expr> value;
+    using Stmt::Stmt;
 };
 
 class IfStmt final : public Stmt {
@@ -201,6 +204,23 @@ public:
     std::string text;
 };
 
+class ImplicitCastExpr final : public Expr {
+public:
+    ImplicitCastExpr(SourceLocation location, CastKind kind, Type targetType,
+                     std::unique_ptr<Expr> subExpr);
+
+    CastKind kind;
+    Type targetType;
+    std::unique_ptr<Expr> subExpr;
+};
+
+class ParenExpr final : public Expr {
+public:
+    ParenExpr(SourceLocation location, std::unique_ptr<Expr> subExpr);
+
+    std::unique_ptr<Expr> subExpr;
+};
+
 class DeclRefExpr final : public Expr {
 public:
     DeclRefExpr(SourceLocation location, std::string name);
@@ -251,12 +271,22 @@ class InitListExpr final : public Expr {
 public:
     using Expr::Expr;
 
+    std::unique_ptr<Expr> arrayFiller;
+    std::vector<std::size_t> valueOffsets;
     std::vector<std::unique_ptr<Expr>> values;
 };
 
-const char *toString(BuiltinType type);
-const char *toString(UnaryOpcode opcode);
-const char *toString(BinaryOpcode opcode);
-std::string typeToString(Type type);
+class ImplicitValueInitExpr final : public Expr {
+public:
+    ImplicitValueInitExpr(SourceLocation location, Type targetType);
+
+    Type targetType;
+};
+
+[[nodiscard]] const char *toString(BuiltinType type) noexcept;
+[[nodiscard]] const char *toString(UnaryOpcode opcode) noexcept;
+[[nodiscard]] const char *toString(BinaryOpcode opcode) noexcept;
+[[nodiscard]] const char *toString(CastKind kind) noexcept;
+[[nodiscard]] std::string typeToString(const Type &type);
 
 } // namespace ast

@@ -18,6 +18,8 @@ private:
 
     void dumpVarDeclChildren(const ast::VarDecl &decl, const std::string &prefix,
                              bool isLastParent);
+    void dumpParamDeclChildren(const ast::ParamDecl &decl, const std::string &prefix,
+                               bool isLastParent);
     void dumpParamDecl(const ast::ParamDecl &decl, const std::string &prefix,
                        bool isLast);
     void writeNode(const std::string &prefix, bool isLast, const std::string &text);
