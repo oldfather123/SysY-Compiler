@@ -12,6 +12,7 @@ For each .sy case:
   - Non-empty stderr is saved to src/test_output/<target-dir>/err/<case>.err.
   - Non-empty diff is saved to src/test_output/<target-dir>/diff/<case>.diff.
   - AST is always dumped to src/test_output/<target-dir>/ast/<case>.ast.
+  - IR is always dumped to src/test_output/<target-dir>/ir/<case>.ir.
   - Default timeout is 25s; override with RUN_SY_TIMEOUT.
 EOF
 }
@@ -63,8 +64,9 @@ out_dir="$out_root/out"
 err_dir="$out_root/err"
 diff_dir="$out_root/diff"
 ast_dir="$out_root/ast"
+ir_dir="$out_root/ir"
 
-mkdir -p "$out_dir" "$err_dir" "$diff_dir" "$ast_dir"
+mkdir -p "$out_dir" "$err_dir" "$diff_dir" "$ast_dir" "$ir_dir"
 
 total=0
 passed=0
@@ -82,7 +84,8 @@ run_with_input() {
     local sy_file=$1
     local out_file=$2
     local ast_file=$3
-    local err_file=$4
+    local ir_file=$4
+    local err_file=$5
 
     local in_file="${sy_file%.sy}.in"
     local input_file=/dev/null
@@ -90,7 +93,7 @@ run_with_input() {
         input_file=$in_file
     fi
 
-    timeout "$case_timeout" "$compiler" "$sy_file" "$out_file" --dump-ast "$ast_file" \
+    timeout "$case_timeout" "$compiler" "$sy_file" "$out_file" --dump-ast "$ast_file" --dump-ir "$ir_file" \
         < "$input_file" > /dev/null 2>> "$err_file"
 }
 
@@ -111,6 +114,7 @@ run_case() {
     local err_file="$err_dir/${base}.err"
     local diff_file="$diff_dir/${base}.diff"
     local ast_file="$ast_dir/${base}.ast"
+    local ir_file="$ir_dir/${base}.ir"
     local status
 
     total=$((total + 1))
@@ -118,8 +122,9 @@ run_case() {
     : > "$err_file"
     : > "$diff_file"
     rm -f "$ast_file"
+    rm -f "$ir_file"
 
-    run_with_input "$sy_file" "$actual_file" "$ast_file" "$err_file"
+    run_with_input "$sy_file" "$actual_file" "$ast_file" "$ir_file" "$err_file"
     status=$?
 
     if [[ $status -eq 124 ]]; then
@@ -128,6 +133,7 @@ run_case() {
         echo "  err:  $err_file"
         echo "  out:  $actual_file"
         echo "  ast:  $ast_file"
+        echo "  ir:   $ir_file"
         timed_out=$((timed_out + 1))
         exit_code=1
         return
@@ -138,6 +144,7 @@ run_case() {
         echo "  out:  $actual_file"
         echo "  err:  $err_file"
         echo "  ast:  $ast_file"
+        echo "  ir:   $ir_file"
         failed=$((failed + 1))
         exit_code=1
         return
@@ -153,6 +160,7 @@ run_case() {
             cleanup_err_file "$err_file"
         fi
         echo "  ast:  $ast_file"
+        echo "  ir:   $ir_file"
         skipped=$((skipped + 1))
         return
     fi
@@ -175,6 +183,7 @@ run_case() {
         fi
         echo "  diff: $diff_file"
         echo "  ast:  $ast_file"
+        echo "  ir:   $ir_file"
         failed=$((failed + 1))
         exit_code=1
     fi

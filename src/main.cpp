@@ -5,6 +5,8 @@
 #include "frontend/SemanticAnalysis.h"
 #include "frontend/generated/SysYLexer.h"
 #include "frontend/generated/SysYParser.h"
+#include "codegen/CodeGen.h"
+#include "codegen/IRDumper.h"
 
 #include <fstream>
 #include <iostream>
@@ -20,11 +22,12 @@ struct Options {
     std::string inputPath;
     std::string outputPath;
     std::string astOutputPath;
+    std::string irOutputPath;
 };
 
 void printUsage(const char *program) {
     std::cerr << "用法: " << program
-              << " <input.sy> [output.txt] [--dump-ast ast.txt]\n";
+              << " <input.sy> [output.txt] [--dump-ast ast.txt] [--dump-ir ir.txt]\n";
 }
 
 bool parseArgs(int argc, char *argv[], Options &options) {
@@ -41,6 +44,16 @@ bool parseArgs(int argc, char *argv[], Options &options) {
             }
             options.astOutputPath = argv[++i];
             if (options.astOutputPath.empty() || options.astOutputPath[0] == '-') {
+                return false;
+            }
+            continue;
+        }
+        if (arg == "--dump-ir") {
+            if (i + 1 >= argc) {
+                return false;
+            }
+            options.irOutputPath = argv[++i];
+            if (options.irOutputPath.empty() || options.irOutputPath[0] == '-') {
                 return false;
             }
             continue;
@@ -154,7 +167,20 @@ int main(int argc, char *argv[]) {
         dumper.dump(*ast);
     }
 
-    // 7. 解释执行并输出文件
+    // 7. 按需输出 IR
+    if (!options.irOutputPath.empty()) {
+        std::ofstream irOutputFile(options.irOutputPath);
+        if (!irOutputFile) {
+            std::cerr << "无法打开 IR 输出文件: " << options.irOutputPath
+                      << '\n';
+            return 1;
+        }
+        codegen::CodeGen codegen(*ast);
+        codegen::IRDumper dumper(irOutputFile);
+        dumper.dump(*codegen.region());
+    }
+
+    // 8. 解释执行并输出文件
     Interpreter interpreter(std::cin);
     try {
         const int returnCode = interpreter.run(*ast);

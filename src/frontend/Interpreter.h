@@ -20,6 +20,7 @@ public:
 
     int run(const ast::TranslationUnit &unit);
     std::string takeOutput();
+    std::string takeTimerOutput();
 
 private:
     enum class ScalarType {
@@ -93,6 +94,7 @@ private:
 
     std::istream &input_;
     std::ostringstream output_;
+    std::ostringstream timerOutput_;
     std::vector<ScopeFrame> scopes_;
     std::unordered_map<const ast::Decl *, std::vector<Variable>> bindings_;
     std::unordered_map<std::string, const ast::FunctionDecl *> astFunctions_;
@@ -116,7 +118,6 @@ private:
     void reset();
     void pushScope();
     void popScope();
-    void declareScalar(const ast::Decl &decl, int value, bool isConst);
     void declareScalar(const ast::Decl &decl, ScalarType type, const Value &value,
                        bool isConst);
     void declareArray(const ast::Decl &decl, std::vector<int> dims,
@@ -173,9 +174,6 @@ private:
     Value evalExpr(const ast::Expr &expr);
     int evalInt(const ast::Expr &expr);
     ArrayRef evalLValRef(const ast::Expr &expr);
-    std::vector<int> evalDimensions(
-        const std::vector<std::unique_ptr<ast::Expr>> &dims);
-    std::vector<int> evalParamTailDimensions(const ast::ParamDecl &param);
     std::vector<int> dimensionsOf(ast::Type type) const;
     std::vector<Value> buildInitValues(const std::vector<int> &dims,
                                        const ast::Expr *initializer);

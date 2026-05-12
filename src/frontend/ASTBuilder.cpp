@@ -185,12 +185,16 @@ std::unique_ptr<ast::Stmt> ASTBuilder::buildStmt(SysYParser::StmtContext *ctx) {
     }
 
     if (ctx->lVal() != nullptr && ctx->ASSIGN() != nullptr) {
-        return std::make_unique<ast::AssignStmt>(locOf(ctx), buildLVal(ctx->lVal()),
-                                                 buildExp(ctx->exp()));
+        return std::make_unique<ast::BinaryOperator>(locOf(ctx),
+                                                     ast::BinaryOpcode::Assign,
+                                                     buildLVal(ctx->lVal()),
+                                                     buildExp(ctx->exp()));
     }
 
-    return std::make_unique<ast::ExprStmt>(
-        locOf(ctx), ctx->exp() == nullptr ? nullptr : buildExp(ctx->exp()));
+    if (ctx->exp() == nullptr) {
+        return std::make_unique<ast::NullStmt>(locOf(ctx));
+    }
+    return buildExp(ctx->exp());
 }
 
 std::unique_ptr<ast::Expr> ASTBuilder::buildInitVal(SysYParser::InitValContext *ctx) {
@@ -239,7 +243,7 @@ std::unique_ptr<ast::Expr> ASTBuilder::buildLVal(SysYParser::LValContext *ctx) {
 std::unique_ptr<ast::Expr>
 ASTBuilder::buildPrimaryExp(SysYParser::PrimaryExpContext *ctx) {
     if (ctx->exp() != nullptr) {
-        return buildExp(ctx->exp());
+        return std::make_unique<ast::ParenExpr>(locOf(ctx), buildExp(ctx->exp()));
     }
     if (ctx->lVal() != nullptr) {
         return buildLVal(ctx->lVal());

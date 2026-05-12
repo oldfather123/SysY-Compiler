@@ -8,6 +8,63 @@
 #include <limits>
 #include <sstream>
 #include <stdexcept>
+#include <utility>
+
+namespace {
+
+std::string initLocationKey(std::size_t level, std::size_t start) {
+    return std::to_string(level) + ":" + std::to_string(start);
+}
+
+ast::Type arrayDecayPointerType(ast::Type type) {
+    type.isPointer = true;
+    if (!type.shape.empty()) {
+        type.shape.erase(type.shape.begin());
+    }
+    return type;
+}
+
+bool isFloating(ast::BuiltinType type) {
+    return type == ast::BuiltinType::Float;
+}
+
+const ast::Expr *stripArrayDecay(const ast::Expr *expr) {
+    const ast::Expr *current = expr;
+    while (const auto *paren = dynamic_cast<const ast::ParenExpr *>(current)) {
+        current = paren->subExpr.get();
+    }
+    while (const auto *cast = dynamic_cast<const ast::ImplicitCastExpr *>(current)) {
+        if (cast->kind != ast::CastKind::ArrayToPointerDecay &&
+            cast->kind != ast::CastKind::LValueToRValue) {
+            break;
+        }
+        current = cast->subExpr.get();
+        while (const auto *paren = dynamic_cast<const ast::ParenExpr *>(current)) {
+            current = paren->subExpr.get();
+        }
+    }
+    return current;
+}
+
+ast::Expr *stripArrayDecay(ast::Expr *expr) {
+    ast::Expr *current = expr;
+    while (auto *paren = dynamic_cast<ast::ParenExpr *>(current)) {
+        current = paren->subExpr.get();
+    }
+    while (auto *cast = dynamic_cast<ast::ImplicitCastExpr *>(current)) {
+        if (cast->kind != ast::CastKind::ArrayToPointerDecay &&
+            cast->kind != ast::CastKind::LValueToRValue) {
+            break;
+        }
+        current = cast->subExpr.get();
+        while (auto *paren = dynamic_cast<ast::ParenExpr *>(current)) {
+            current = paren->subExpr.get();
+        }
+    }
+    return current;
+}
+
+} // namespace
 
 bool SemanticAnalysis::analyze(ast::TranslationUnit &unit) {
     reset();
@@ -49,43 +106,47 @@ void SemanticAnalysis::installRuntimeFunctions() {
     auto array = [](ast::BuiltinType base) {
         ast::Type type;
         type.base = base;
-        type.shape = {-1};
+        type.isPointer = true;
         return type;
     };
 
-    functions_["getint"] = {scalar(ast::BuiltinType::Int), {}, false, true, nullptr};
-    functions_["getch"] = {scalar(ast::BuiltinType::Int), {}, false, true, nullptr};
-    functions_["getfloat"] = {scalar(ast::BuiltinType::Float), {}, false, true, nullptr};
-    functions_["getarray"] = {scalar(ast::BuiltinType::Int),
-                              {array(ast::BuiltinType::Int)}, false, true, nullptr};
-    functions_["getfarray"] = {scalar(ast::BuiltinType::Int),
-                               {array(ast::BuiltinType::Float)}, false, true, nullptr};
-    functions_["putint"] = {scalar(ast::BuiltinType::Void),
-                            {scalar(ast::BuiltinType::Int)}, false, true, nullptr};
-    functions_["putch"] = {scalar(ast::BuiltinType::Void),
-                           {scalar(ast::BuiltinType::Int)}, false, true, nullptr};
-    functions_["putfloat"] = {scalar(ast::BuiltinType::Void),
-                              {scalar(ast::BuiltinType::Float)}, false, true, nullptr};
-    functions_["putarray"] = {scalar(ast::BuiltinType::Void),
-                              {scalar(ast::BuiltinType::Int),
-                               array(ast::BuiltinType::Int)},
-                              false, true, nullptr};
-    functions_["putfarray"] = {scalar(ast::BuiltinType::Void),
-                               {scalar(ast::BuiltinType::Int),
-                                array(ast::BuiltinType::Float)},
-                               false, true, nullptr};
-    functions_["putf"] = {scalar(ast::BuiltinType::Void),
-                          {scalar(ast::BuiltinType::String)}, true, true, nullptr};
-    functions_["starttime"] = {scalar(ast::BuiltinType::Void), {}, false, true,
-                               nullptr};
-    functions_["stoptime"] = {scalar(ast::BuiltinType::Void), {}, false, true,
-                              nullptr};
-    functions_["_sysy_starttime"] = {scalar(ast::BuiltinType::Void),
-                                     {scalar(ast::BuiltinType::Int)}, false, true,
-                                     nullptr};
-    functions_["_sysy_stoptime"] = {scalar(ast::BuiltinType::Void),
-                                    {scalar(ast::BuiltinType::Int)}, false, true,
-                                    nullptr};
+    auto runtime = [](ast::Type returnType, std::vector<ast::Type> params = {},
+                      bool variadic = false) {
+        Function function;
+        function.returnType = returnType;
+        function.params = std::move(params);
+        function.variadic = variadic;
+        function.builtin = true;
+        return function;
+    };
+
+    functions_["getint"] = runtime(scalar(ast::BuiltinType::Int));
+    functions_["getch"] = runtime(scalar(ast::BuiltinType::Int));
+    functions_["getfloat"] = runtime(scalar(ast::BuiltinType::Float));
+    functions_["getarray"] = runtime(scalar(ast::BuiltinType::Int),
+                                     {array(ast::BuiltinType::Int)});
+    functions_["getfarray"] = runtime(scalar(ast::BuiltinType::Int),
+                                      {array(ast::BuiltinType::Float)});
+    functions_["putint"] = runtime(scalar(ast::BuiltinType::Void),
+                                   {scalar(ast::BuiltinType::Int)});
+    functions_["putch"] = runtime(scalar(ast::BuiltinType::Void),
+                                  {scalar(ast::BuiltinType::Int)});
+    functions_["putfloat"] = runtime(scalar(ast::BuiltinType::Void),
+                                     {scalar(ast::BuiltinType::Float)});
+    functions_["putarray"] = runtime(scalar(ast::BuiltinType::Void),
+                                     {scalar(ast::BuiltinType::Int),
+                                      array(ast::BuiltinType::Int)});
+    functions_["putfarray"] = runtime(scalar(ast::BuiltinType::Void),
+                                      {scalar(ast::BuiltinType::Int),
+                                       array(ast::BuiltinType::Float)});
+    functions_["putf"] = runtime(scalar(ast::BuiltinType::Void),
+                                 {scalar(ast::BuiltinType::String)}, true);
+    functions_["starttime"] = runtime(scalar(ast::BuiltinType::Void));
+    functions_["stoptime"] = runtime(scalar(ast::BuiltinType::Void));
+    functions_["_sysy_starttime"] = runtime(scalar(ast::BuiltinType::Void),
+                                            {scalar(ast::BuiltinType::Int)});
+    functions_["_sysy_stoptime"] = runtime(scalar(ast::BuiltinType::Void),
+                                           {scalar(ast::BuiltinType::Int)});
 }
 
 void SemanticAnalysis::pushScope() {
@@ -114,7 +175,7 @@ void SemanticAnalysis::analyzeVarDecl(ast::VarDecl &decl) {
     const bool constOnly = global || decl.type.isConst;
 
     if (decl.initializer != nullptr) {
-        analyzeInitializer(decl.type, *decl.initializer, constOnly, constOnly);
+        analyzeInitializer(decl.type, decl.initializer, constOnly, constOnly);
     }
 
     if (declareVariable(decl.name, decl.type, decl)) {
@@ -179,28 +240,7 @@ void SemanticAnalysis::analyzeStmt(ast::Stmt &stmt) {
         return;
     }
 
-    if (auto *exprStmt = dynamic_cast<ast::ExprStmt *>(&stmt)) {
-        if (exprStmt->expression != nullptr) {
-            inferExpr(*exprStmt->expression, false);
-        }
-        return;
-    }
-
-    if (auto *assign = dynamic_cast<ast::AssignStmt *>(&stmt)) {
-        ast::Type lhs = inferExpr(*assign->target, false);
-        ast::Type rhs = inferExpr(*assign->value, false);
-        if (!isAssignableLValue(*assign->target)) {
-            addError(*assign, "赋值左侧必须是变量左值");
-        }
-        if (lhs.isConst) {
-            addError(*assign, "不能给 const 左值赋值");
-        }
-        if (lhs.isArray()) {
-            addError(*assign, "赋值左侧必须定位到标量元素，不能是数组");
-        }
-        if (!compatible(lhs, rhs, false)) {
-            addError(*assign, "赋值左右类型不兼容");
-        }
+    if (dynamic_cast<ast::NullStmt *>(&stmt) != nullptr) {
         return;
     }
 
@@ -208,6 +248,8 @@ void SemanticAnalysis::analyzeStmt(ast::Stmt &stmt) {
         ast::Type condition = inferExpr(*ifStmt->condition, true);
         if (!condition.isScalar()) {
             addError(*ifStmt, "条件表达式必须是 int/float 标量");
+        } else {
+            applyLValueToRValue(ifStmt->condition);
         }
         if (ifStmt->thenBranch != nullptr) {
             analyzeStmt(*ifStmt->thenBranch);
@@ -222,6 +264,8 @@ void SemanticAnalysis::analyzeStmt(ast::Stmt &stmt) {
         ast::Type condition = inferExpr(*whileStmt->condition, true);
         if (!condition.isScalar()) {
             addError(*whileStmt, "条件表达式必须是 int/float 标量");
+        } else {
+            applyLValueToRValue(whileStmt->condition);
         }
         ++loopDepth_;
         if (whileStmt->body != nullptr) {
@@ -248,10 +292,19 @@ void SemanticAnalysis::analyzeStmt(ast::Stmt &stmt) {
             addError(*returnStmt, "非 void 函数需要返回表达式");
         } else {
             ast::Type valueType = inferExpr(*returnStmt->value, false);
+            applyLValueToRValue(returnStmt->value);
+            valueType = returnStmt->value->inferredType;
             if (!compatible(currentFunctionReturn_, valueType, false)) {
                 addError(*returnStmt, "return 表达式类型与函数返回类型不兼容");
+            } else {
+                applyImplicitCast(returnStmt->value, currentFunctionReturn_);
             }
         }
+        return;
+    }
+
+    if (auto *expr = dynamic_cast<ast::Expr *>(&stmt)) {
+        inferExpr(*expr, false);
     }
 }
 
@@ -269,44 +322,52 @@ void SemanticAnalysis::analyzeDeclStmt(ast::DeclStmt &stmt) {
     }
 }
 
-void SemanticAnalysis::analyzeInitializer(ast::Type target, ast::Expr &initializer,
+void SemanticAnalysis::analyzeInitializer(ast::Type target,
+                                          std::unique_ptr<ast::Expr> &initializer,
                                           bool constOnly, bool checkIntRange,
                                           bool arrayElement) {
+    ast::Expr &node = *initializer;
     if (target.isArray()) {
-        if (dynamic_cast<ast::InitListExpr *>(&initializer) == nullptr) {
-            addError(initializer, "数组初始化必须使用花括号列表");
-            inferExpr(initializer, false, constOnly);
+        if (dynamic_cast<ast::InitListExpr *>(&node) == nullptr) {
+            addError(node, "数组初始化必须使用花括号列表");
+            inferExpr(node, false, constOnly);
             return;
         }
 
         const std::size_t total = aggregateSize(target, 0);
-        const std::size_t leaves = countInitLeaves(initializer);
+        const std::size_t leaves = countInitLeaves(node);
         if (total != 0 && leaves > total) {
-            addError(initializer, "数组初始化元素过多");
+            addError(node, "数组初始化元素过多");
         }
         checkInitAggregate(target, initializer, constOnly, checkIntRange, 0, 0,
                            true);
+        normalizeArrayInitializer(target, initializer);
         return;
     }
 
-    if (auto *list = dynamic_cast<ast::InitListExpr *>(&initializer)) {
+    if (auto *list = dynamic_cast<ast::InitListExpr *>(&node)) {
         setExprType(*list, target);
-        addError(initializer, "标量初值不能是列表");
+        addError(node, "标量初值不能是列表");
         for (std::unique_ptr<ast::Expr> &value : list->values) {
             inferExpr(*value, false, constOnly);
         }
         return;
     }
 
-    ast::Type source = inferExpr(initializer, false, constOnly);
+    ast::Type source = inferExpr(node, false, constOnly);
+    applyLValueToRValue(initializer);
+    source = initializer->inferredType;
     if (!compatible(target, source, arrayElement)) {
-        addError(initializer, "初始化表达式类型不兼容");
-    } else if (checkIntRange) {
-        const ConstValue value = evalConstExpr(initializer);
-        if (value.known && !checkValueRange(target, value)) {
-            addError(initializer, "初始化表达式超出 " +
-                                      std::string(ast::toString(target.base)) + " 范围");
+        addError(node, "初始化表达式类型不兼容");
+    } else {
+        if (checkIntRange) {
+            const ConstValue value = evalConstExpr(node);
+            if (value.known && !checkValueRange(target, value)) {
+                addError(node, "初始化表达式超出 " +
+                                   std::string(ast::toString(target.base)) + " 范围");
+            }
         }
+        applyImplicitCast(initializer, target);
     }
 }
 
@@ -327,6 +388,13 @@ ast::Type SemanticAnalysis::inferExpr(ast::Expr &expr, bool allowConditionOps,
         type.base = ast::BuiltinType::String;
         return setExprType(*literal, type);
     }
+    if (auto *cast = dynamic_cast<ast::ImplicitCastExpr *>(&expr)) {
+        inferExpr(*cast->subExpr, allowConditionOps, constOnly);
+        return setExprType(*cast, cast->targetType);
+    }
+    if (auto *paren = dynamic_cast<ast::ParenExpr *>(&expr)) {
+        return inferParen(*paren, allowConditionOps, constOnly);
+    }
     if (auto *ref = dynamic_cast<ast::DeclRefExpr *>(&expr)) {
         return inferDeclRef(*ref, constOnly);
     }
@@ -342,14 +410,29 @@ ast::Type SemanticAnalysis::inferExpr(ast::Expr &expr, bool allowConditionOps,
     if (auto *call = dynamic_cast<ast::CallExpr *>(&expr)) {
         return inferCall(*call, allowConditionOps, constOnly);
     }
+    if (auto *implicitInit = dynamic_cast<ast::ImplicitValueInitExpr *>(&expr)) {
+        return setExprType(*implicitInit, implicitInit->targetType);
+    }
     if (auto *list = dynamic_cast<ast::InitListExpr *>(&expr)) {
         for (std::unique_ptr<ast::Expr> &value : list->values) {
             inferExpr(*value, allowConditionOps, constOnly);
+        }
+        if (list->arrayFiller != nullptr) {
+            inferExpr(*list->arrayFiller, allowConditionOps, constOnly);
+        }
+        if (list->hasType) {
+            return list->inferredType;
         }
         return setExprType(*list, {});
     }
 
     return setExprType(expr, {});
+}
+
+ast::Type SemanticAnalysis::inferParen(ast::ParenExpr &expr, bool allowConditionOps,
+                                       bool constOnly) {
+    ast::Type type = inferExpr(*expr.subExpr, allowConditionOps, constOnly);
+    return setExprType(expr, type);
 }
 
 ast::Type SemanticAnalysis::inferDeclRef(ast::DeclRefExpr &expr, bool constOnly) {
@@ -371,16 +454,25 @@ SemanticAnalysis::inferArraySubscript(ast::ArraySubscriptExpr &expr,
                                       bool allowConditionOps,
                                       bool constOnly) {
     ast::Type base = inferExpr(*expr.base, allowConditionOps, constOnly);
+    if (base.isArray()) {
+        applyArrayToPointerDecay(expr.base);
+        base = expr.base->inferredType;
+    } else if (base.isPointer) {
+        applyLValueToRValue(expr.base);
+        base = expr.base->inferredType;
+    }
     ast::Type index = inferExpr(*expr.index, false, constOnly);
-    if (index.base != ast::BuiltinType::Int || index.isArray()) {
+    applyLValueToRValue(expr.index);
+    index = expr.index->inferredType;
+    if (index.base != ast::BuiltinType::Int || !index.isScalar()) {
         addError(*expr.index, "数组下标必须是 int 表达式");
     }
 
-    if (!base.isArray()) {
+    if (!base.isArray() && !base.isPointer) {
         if (const ast::DeclRefExpr *root = subscriptRoot(expr); root != nullptr) {
             const Symbol *symbol = resolveVariable(root->name);
             if (symbol != nullptr) {
-                if (!symbol->type.isArray()) {
+                if (!symbol->type.isArray() && !symbol->type.isPointer) {
                     addError(expr, "标量 '" + root->name + "' 不能使用数组下标");
                 } else {
                     addError(expr, "数组 '" + root->name + "' 下标数量过多");
@@ -394,7 +486,9 @@ SemanticAnalysis::inferArraySubscript(ast::ArraySubscriptExpr &expr,
         return setExprType(expr, {});
     }
 
-    if (!base.shape.empty()) {
+    if (base.isPointer) {
+        base.isPointer = false;
+    } else if (!base.shape.empty()) {
         base.shape.erase(base.shape.begin());
     }
     return setExprType(expr, base);
@@ -407,6 +501,8 @@ ast::Type SemanticAnalysis::inferUnary(ast::UnaryOperator &expr,
     }
 
     ast::Type operand = inferExpr(*expr.operand, allowConditionOps, constOnly);
+    applyLValueToRValue(expr.operand);
+    operand = expr.operand->inferredType;
     if (!operand.isScalar()) {
         addError(expr, "一元运算对象必须是 int/float 标量");
         return setExprType(expr, {});
@@ -423,16 +519,52 @@ ast::Type SemanticAnalysis::inferUnary(ast::UnaryOperator &expr,
 
 ast::Type SemanticAnalysis::inferBinary(ast::BinaryOperator &expr,
                                         bool allowConditionOps, bool constOnly) {
+    if (expr.opcode == ast::BinaryOpcode::Assign) {
+        ast::Type lhs = inferExpr(*expr.lhs, false, constOnly);
+        ast::Type rhs = inferExpr(*expr.rhs, false, constOnly);
+        applyLValueToRValue(expr.rhs);
+        rhs = expr.rhs->inferredType;
+
+        if (!isAssignableLValue(*expr.lhs)) {
+            addError(expr, "赋值左侧必须是变量左值");
+        }
+        if (lhs.isConst) {
+            addError(expr, "不能给 const 左值赋值");
+        }
+        if (lhs.isArray()) {
+            addError(expr, "赋值左侧必须定位到标量元素，不能是数组");
+        }
+        if (!compatible(lhs, rhs, false)) {
+            addError(expr, "赋值左右类型不兼容");
+        } else {
+            applyImplicitCast(expr.rhs, lhs);
+        }
+
+        ast::Type result = lhs;
+        result.isConst = false;
+        return setExprType(expr, result);
+    }
+
     if (isConditionOperator(expr.opcode) && !allowConditionOps) {
         addError(expr, "普通 Exp 中不能使用关系或逻辑运算");
     }
 
     ast::Type lhs = inferExpr(*expr.lhs, allowConditionOps, constOnly);
     ast::Type rhs = inferExpr(*expr.rhs, allowConditionOps, constOnly);
+    applyLValueToRValue(expr.lhs);
+    applyLValueToRValue(expr.rhs);
+    lhs = expr.lhs->inferredType;
+    rhs = expr.rhs->inferredType;
     ast::Type result;
 
     if (!lhs.isScalar() || !rhs.isScalar()) {
         addError(expr, "二元运算两侧必须是 int/float 标量");
+        return setExprType(expr, result);
+    }
+
+    if (expr.opcode == ast::BinaryOpcode::LogicalAnd ||
+        expr.opcode == ast::BinaryOpcode::LogicalOr) {
+        result.base = ast::BuiltinType::Int;
         return setExprType(expr, result);
     }
 
@@ -441,14 +573,32 @@ ast::Type SemanticAnalysis::inferBinary(ast::BinaryOperator &expr,
             (lhs.base != ast::BuiltinType::Int || rhs.base != ast::BuiltinType::Int)) {
             addError(expr, "取模运算只能用于 int");
         }
+        if (expr.opcode != ast::BinaryOpcode::Mod &&
+            (isFloating(lhs.base) || isFloating(rhs.base))) {
+            ast::Type floatType;
+            floatType.base = ast::BuiltinType::Float;
+            applyImplicitCast(expr.lhs, floatType);
+            applyImplicitCast(expr.rhs, floatType);
+            lhs = expr.lhs->inferredType;
+            rhs = expr.rhs->inferredType;
+        }
         result.base =
-            (lhs.base == ast::BuiltinType::Float || rhs.base == ast::BuiltinType::Float)
+            (isFloating(lhs.base) || isFloating(rhs.base))
                 ? ast::BuiltinType::Float
                 : ast::BuiltinType::Int;
         if (expr.opcode == ast::BinaryOpcode::Mod) {
             result.base = ast::BuiltinType::Int;
         }
         return setExprType(expr, result);
+    }
+
+    if (expr.opcode != ast::BinaryOpcode::LogicalAnd &&
+        expr.opcode != ast::BinaryOpcode::LogicalOr &&
+        (isFloating(lhs.base) || isFloating(rhs.base))) {
+        ast::Type floatType;
+        floatType.base = ast::BuiltinType::Float;
+        applyImplicitCast(expr.lhs, floatType);
+        applyImplicitCast(expr.rhs, floatType);
     }
 
     result.base = ast::BuiltinType::Int;
@@ -466,13 +616,21 @@ ast::Type SemanticAnalysis::inferCall(ast::CallExpr &expr, bool allowConditionOp
 
     expr.calleeDecl = function->decl;
     expr.isBuiltin = function->builtin;
+
     if (constOnly) {
         addError(expr, "常量表达式中不能调用函数 '" + expr.callee + "'");
     }
 
     std::vector<ast::Type> args;
     for (std::unique_ptr<ast::Expr> &arg : expr.arguments) {
-        args.push_back(inferExpr(*arg, false));
+        args.push_back(inferExpr(*arg, false, constOnly));
+        if (args.back().isArray()) {
+            applyArrayToPointerDecay(arg);
+            args.back() = arg->inferredType;
+            continue;
+        }
+        applyLValueToRValue(arg);
+        args.back() = arg->inferredType;
     }
 
     if (!function->variadic && args.size() != function->params.size()) {
@@ -483,9 +641,11 @@ ast::Type SemanticAnalysis::inferCall(ast::CallExpr &expr, bool allowConditionOp
 
     const std::size_t fixed = std::min(args.size(), function->params.size());
     for (std::size_t i = 0; i < fixed; ++i) {
-        if (!compatible(function->params[i], args[i], false)) {
+        if (!compatibleCallArgument(*function, i, function->params[i], args[i])) {
             addError(expr, "函数 '" + expr.callee + "' 第 " +
                                std::to_string(i + 1) + " 个参数类型不匹配");
+        } else {
+            applyImplicitCast(expr.arguments[i], function->params[i]);
         }
     }
     return setExprType(expr, function->returnType);
@@ -498,7 +658,6 @@ ast::Type SemanticAnalysis::buildParamType(ast::ParamDecl &param) {
 
     ast::Type type = param.type;
     type.shape.clear();
-    type.shape.push_back(-1);
     for (std::unique_ptr<ast::Expr> &dimension : param.dimensions) {
         ast::Type dimensionType = inferExpr(*dimension, false, true);
         ConstValue value = evalConstExpr(*dimension);
@@ -515,7 +674,9 @@ ast::Type SemanticAnalysis::buildParamType(ast::ParamDecl &param) {
         }
         type.shape.push_back(value.intValue);
     }
+    type.isPointer = true;
     param.type = type;
+    param.dimensions.clear();
     return type;
 }
 
@@ -538,11 +699,12 @@ ast::Type SemanticAnalysis::buildArrayType(ast::VarDecl &decl, bool constOnly) {
         }
         type.shape.push_back(value.intValue);
     }
+    decl.dimensions.clear();
     return type;
 }
 
 bool SemanticAnalysis::declareVariable(const std::string &name, ast::Type type,
-                                          const ast::Decl &decl) {
+                                          ast::Decl &decl) {
     auto &scope = scopes_.back();
     if (scope.find(name) != scope.end()) {
         addError(decl, "重复定义变量或常量 '" + name + "'");
@@ -588,7 +750,7 @@ SemanticAnalysis::resolveConstant(const std::string &name) const {
 }
 
 bool SemanticAnalysis::declareFunction(const std::string &name, Function function,
-                                          const ast::FunctionDecl &decl) {
+                                          ast::FunctionDecl &decl) {
     if (functions_.find(name) != functions_.end()) {
         addError(decl, "重复定义函数 '" + name + "'");
         return false;
@@ -616,6 +778,20 @@ bool SemanticAnalysis::compatible(ast::Type target, ast::Type source,
         source.base == ast::BuiltinType::Invalid) {
         return false;
     }
+    if (target.isPointer || source.isPointer) {
+        if (!target.isPointer || !source.isPointer || target.base != source.base ||
+            target.shape.size() != source.shape.size()) {
+            return false;
+        }
+        for (std::size_t i = 0; i < target.shape.size(); ++i) {
+            const long long targetDim = target.shape[i];
+            const long long sourceDim = source.shape[i];
+            if (targetDim > 0 && sourceDim > 0 && targetDim != sourceDim) {
+                return false;
+            }
+        }
+        return true;
+    }
     if (target.isArray() || source.isArray()) {
         if (!target.isArray() || !source.isArray() || target.base != source.base ||
             target.shape.size() != source.shape.size()) {
@@ -639,10 +815,31 @@ bool SemanticAnalysis::compatible(ast::Type target, ast::Type source,
         return target.base == source.base;
     }
     if (arrayInitializer && target.base == ast::BuiltinType::Int &&
-        source.base == ast::BuiltinType::Float) {
+        isFloating(source.base)) {
         return false;
     }
     return isNumeric(target.base) && isNumeric(source.base);
+}
+
+bool SemanticAnalysis::compatibleCallArgument(const Function &function,
+                                              std::size_t paramIndex,
+                                              ast::Type target,
+                                              ast::Type source) const {
+    if (compatible(target, source, false)) {
+        return true;
+    }
+
+    const bool flatArrayRuntimeParam =
+        function.builtin &&
+        ((function.decl == nullptr && function.params.size() == 1 &&
+          paramIndex == 0) ||
+         (function.decl == nullptr && function.params.size() == 2 &&
+          paramIndex == 1));
+    if (!flatArrayRuntimeParam || !target.isPointer || !source.isPointer) {
+        return false;
+    }
+
+    return target.base == source.base && target.shape.empty();
 }
 
 bool SemanticAnalysis::isNumeric(ast::BuiltinType type) const {
@@ -708,13 +905,14 @@ std::size_t SemanticAnalysis::countInitLeaves(ast::Expr &initializer) const {
 }
 
 std::size_t SemanticAnalysis::checkInitAggregate(ast::Type target,
-                                                 ast::Expr &initializer,
+                                                 std::unique_ptr<ast::Expr> &initializer,
                                                  bool constOnly,
                                                  bool checkIntRange,
                                                  std::size_t level,
                                                  std::size_t start,
                                                  bool root) {
-    if (auto *list = dynamic_cast<ast::InitListExpr *>(&initializer)) {
+    ast::Expr &node = *initializer;
+    if (auto *list = dynamic_cast<ast::InitListExpr *>(&node)) {
         setExprType(*list, typeAtLevel(target, level));
         if (level >= target.shape.size()) {
             addError(*list, "标量初值不能是列表");
@@ -735,7 +933,7 @@ std::size_t SemanticAnalysis::checkInitAggregate(ast::Type target,
             }
 
             if (dynamic_cast<ast::InitListExpr *>(value.get()) == nullptr) {
-                pos = checkInitAggregate(target, *value, constOnly, checkIntRange,
+                pos = checkInitAggregate(target, value, constOnly, checkIntRange,
                                          level + 1, pos, false);
                 continue;
             }
@@ -747,31 +945,181 @@ std::size_t SemanticAnalysis::checkInitAggregate(ast::Type target,
                 inferExpr(*value, false, constOnly);
                 continue;
             }
-            pos = checkInitAggregate(target, *value, constOnly, checkIntRange,
+            pos = checkInitAggregate(target, value, constOnly, checkIntRange,
                                      childLevel, pos, false);
         }
         return start + currentSize;
     }
 
     if (root) {
-        addError(initializer, "数组初始化必须使用花括号列表");
-        inferExpr(initializer, false, constOnly);
+        addError(node, "数组初始化必须使用花括号列表");
+        inferExpr(node, false, constOnly);
         return start;
     }
 
-    const ast::Type source = inferExpr(initializer, false, constOnly);
+    ast::Type source = inferExpr(node, false, constOnly);
+    applyLValueToRValue(initializer);
+    source = initializer->inferredType;
     const ast::Type element = scalarElementType(target);
     if (!compatible(element, source, true)) {
-        addError(initializer, "初始化列表元素类型不兼容");
-    }
-    if (checkIntRange) {
-        const ConstValue value = evalConstExpr(initializer);
-        if (value.known && !checkValueRange(element, value)) {
-            addError(initializer, "初始化列表元素超出 " +
-                                      std::string(ast::toString(element.base)) + " 范围");
+        addError(node, "初始化列表元素类型不兼容");
+    } else {
+        if (checkIntRange) {
+            const ConstValue value = evalConstExpr(node);
+            if (value.known && !checkValueRange(element, value)) {
+                addError(node, "初始化列表元素超出 " +
+                                   std::string(ast::toString(element.base)) + " 范围");
+            }
         }
+        applyImplicitCast(initializer, element);
     }
     return start + 1;
+}
+
+std::size_t SemanticAnalysis::collectNormalizedInitLeaves(
+    ast::Type target, std::unique_ptr<ast::Expr> &initializer, std::size_t level,
+    std::size_t start, bool root, std::vector<std::unique_ptr<ast::Expr>> &leaves,
+    std::unordered_map<std::string, ast::SourceLocation> &listLocations) const {
+    if (auto *list = dynamic_cast<ast::InitListExpr *>(initializer.get())) {
+        if (level >= target.shape.size()) {
+            return start;
+        }
+
+        listLocations.emplace(initLocationKey(level, start), list->location());
+
+        const std::size_t total = aggregateSize(target, 0);
+        const std::size_t currentSize = aggregateSize(target, level);
+        const std::size_t aggregateEnd = std::min(total, start + currentSize);
+        std::size_t pos = start;
+        for (std::unique_ptr<ast::Expr> &value : list->values) {
+            if (pos >= aggregateEnd) {
+                break;
+            }
+
+            if (dynamic_cast<ast::InitListExpr *>(value.get()) == nullptr) {
+                pos = collectNormalizedInitLeaves(target, value, level + 1, pos, false,
+                                                 leaves, listLocations);
+                continue;
+            }
+
+            const std::size_t childLevel =
+                initializerChildLevel(target, level, start, pos);
+            if (childLevel >= target.shape.size()) {
+                continue;
+            }
+            pos = collectNormalizedInitLeaves(target, value, childLevel, pos, false,
+                                              leaves, listLocations);
+        }
+        return start + currentSize;
+    }
+
+    if (root || start >= leaves.size()) {
+        return start;
+    }
+
+    leaves[start] = std::move(initializer);
+    return start + 1;
+}
+
+void SemanticAnalysis::normalizeArrayInitializer(ast::Type target,
+                                                 std::unique_ptr<ast::Expr> &initializer) {
+    auto *list = dynamic_cast<ast::InitListExpr *>(initializer.get());
+    if (list == nullptr || !target.isArray()) {
+        return;
+    }
+
+    const std::size_t total = aggregateSize(target, 0);
+    std::vector<std::unique_ptr<ast::Expr>> leaves(total);
+    std::unordered_map<std::string, ast::SourceLocation> listLocations;
+    collectNormalizedInitLeaves(target, initializer, 0, 0, true, leaves, listLocations);
+    initializer = buildNormalizedInitList(target, 0, 0, leaves, listLocations);
+}
+
+std::unique_ptr<ast::Expr> SemanticAnalysis::buildNormalizedInitList(
+    ast::Type target, std::size_t level, std::size_t start,
+    std::vector<std::unique_ptr<ast::Expr>> &leaves,
+    const std::unordered_map<std::string, ast::SourceLocation> &listLocations) const {
+    const ast::Type currentType = typeAtLevel(target, level);
+    ast::SourceLocation loc;
+    if (const auto found = listLocations.find(initLocationKey(level, start));
+        found != listLocations.end()) {
+        loc = found->second;
+    } else {
+        const std::size_t currentSize = aggregateSize(target, level);
+        const std::size_t end = std::min(leaves.size(), start + currentSize);
+        for (std::size_t i = start; i < end; ++i) {
+            if (leaves[i] != nullptr) {
+                loc = leaves[i]->location();
+                break;
+            }
+        }
+    }
+
+    auto list = std::make_unique<ast::InitListExpr>(loc);
+    setExprType(*list, currentType);
+
+    const bool leafAggregate = level + 1 >= target.shape.size();
+    if (leafAggregate) {
+        const std::size_t slots =
+            currentType.shape.empty() || currentType.shape.front() <= 0
+                ? 0
+                : static_cast<std::size_t>(currentType.shape.front());
+        std::size_t explicitCount = 0;
+        for (std::size_t i = 0; i < slots && start + i < leaves.size(); ++i) {
+            if (leaves[start + i] != nullptr) {
+                ++explicitCount;
+            }
+        }
+        if (explicitCount < slots) {
+            auto filler =
+                std::make_unique<ast::ImplicitValueInitExpr>(ast::SourceLocation{},
+                                                             scalarElementType(target));
+            setExprType(*filler, scalarElementType(target));
+            list->arrayFiller = std::move(filler);
+        }
+        for (std::size_t i = 0; i < slots && start + i < leaves.size(); ++i) {
+            if (leaves[start + i] != nullptr) {
+                list->valueOffsets.push_back(i);
+                list->values.push_back(std::move(leaves[start + i]));
+            }
+        }
+        return list;
+    }
+
+    const std::size_t childCount =
+        currentType.shape.empty() || currentType.shape.front() <= 0
+            ? 0
+            : static_cast<std::size_t>(currentType.shape.front());
+    const std::size_t childSize = aggregateSize(target, level + 1);
+    std::size_t explicitChildren = 0;
+    for (std::size_t child = 0; child < childCount; ++child) {
+        const std::size_t childStart = start + child * childSize;
+        const std::size_t childEnd = std::min(leaves.size(), childStart + childSize);
+        bool hasExplicit =
+            listLocations.find(initLocationKey(level + 1, childStart)) !=
+            listLocations.end();
+        for (std::size_t pos = childStart; pos < childEnd; ++pos) {
+            if (leaves[pos] != nullptr) {
+                hasExplicit = true;
+                break;
+            }
+        }
+        if (!hasExplicit) {
+            continue;
+        }
+        ++explicitChildren;
+        list->valueOffsets.push_back(child * childSize);
+        list->values.push_back(
+            buildNormalizedInitList(target, level + 1, childStart, leaves, listLocations));
+    }
+
+    if (explicitChildren < childCount) {
+        auto filler = std::make_unique<ast::ImplicitValueInitExpr>(
+            ast::SourceLocation{}, typeAtLevel(target, level + 1));
+        setExprType(*filler, typeAtLevel(target, level + 1));
+        list->arrayFiller = std::move(filler);
+    }
+    return list;
 }
 
 ast::Type SemanticAnalysis::scalarElementType(ast::Type type) const {
@@ -791,14 +1139,17 @@ ast::Type SemanticAnalysis::typeAtLevel(ast::Type type, std::size_t level) const
 }
 
 const ast::DeclRefExpr *SemanticAnalysis::subscriptRoot(const ast::Expr &expr) const {
-    const ast::Expr *current = &expr;
+    const ast::Expr *current = stripArrayDecay(&expr);
     while (auto *subscript = dynamic_cast<const ast::ArraySubscriptExpr *>(current)) {
-        current = subscript->base.get();
+        current = stripArrayDecay(subscript->base.get());
     }
     return dynamic_cast<const ast::DeclRefExpr *>(current);
 }
 
 bool SemanticAnalysis::isAssignableLValue(const ast::Expr &expr) const {
+    if (const auto *paren = dynamic_cast<const ast::ParenExpr *>(&expr)) {
+        return isAssignableLValue(*paren->subExpr);
+    }
     return dynamic_cast<const ast::DeclRefExpr *>(&expr) != nullptr ||
            dynamic_cast<const ast::ArraySubscriptExpr *>(&expr) != nullptr;
 }
@@ -878,6 +1229,28 @@ SemanticAnalysis::ConstValue SemanticAnalysis::evalConstExpr(ast::Expr &expr) {
     if (auto *literal = dynamic_cast<ast::FloatLiteral *>(&expr)) {
         return {true, ast::BuiltinType::Float, 0, parseFloatLiteral(literal->text)};
     }
+    if (auto *cast = dynamic_cast<ast::ImplicitCastExpr *>(&expr)) {
+        ConstValue value = evalConstExpr(*cast->subExpr);
+        if (cast->kind == ast::CastKind::LValueToRValue ||
+            cast->kind == ast::CastKind::ArrayToPointerDecay) {
+            return value;
+        }
+        if (cast->kind == ast::CastKind::IntToBool ||
+            cast->kind == ast::CastKind::FloatToBool) {
+            if (!value.known || !isNumeric(value.base)) {
+                return {};
+            }
+            ConstValue result;
+            result.known = true;
+            result.base = ast::BuiltinType::Int;
+            result.intValue = isConstTruthy(value) ? 1 : 0;
+            return result;
+        }
+        return convertConstValue(value, cast->targetType);
+    }
+    if (auto *paren = dynamic_cast<ast::ParenExpr *>(&expr)) {
+        return evalConstExpr(*paren->subExpr);
+    }
     if (auto *ref = dynamic_cast<ast::DeclRefExpr *>(&expr)) {
         if (ref->referencedDecl == nullptr) {
             inferDeclRef(*ref, true);
@@ -894,6 +1267,12 @@ SemanticAnalysis::ConstValue SemanticAnalysis::evalConstExpr(ast::Expr &expr) {
     if (auto *binary = dynamic_cast<ast::BinaryOperator *>(&expr)) {
         return evalConstBinary(binary->opcode, evalConstExpr(*binary->lhs),
                                evalConstExpr(*binary->rhs));
+    }
+    if (auto *implicitInit = dynamic_cast<ast::ImplicitValueInitExpr *>(&expr)) {
+        ConstValue zero;
+        zero.known = true;
+        zero.base = implicitInit->targetType.base;
+        return zero;
     }
     return {};
 }
@@ -913,14 +1292,14 @@ SemanticAnalysis::ConstValue SemanticAnalysis::evalConstLValue(ast::Expr &expr) 
     }
 
     std::vector<long long> indices;
-    ast::Expr *current = &expr;
+    ast::Expr *current = stripArrayDecay(&expr);
     while (auto *nested = dynamic_cast<ast::ArraySubscriptExpr *>(current)) {
         const ConstValue index = evalConstExpr(*nested->index);
         if (!index.known || index.base != ast::BuiltinType::Int) {
             return {};
         }
         indices.push_back(index.intValue);
-        current = nested->base.get();
+        current = stripArrayDecay(nested->base.get());
     }
 
     auto *root = dynamic_cast<ast::DeclRefExpr *>(current);
@@ -1012,6 +1391,10 @@ std::size_t SemanticAnalysis::flattenConstArrayInit(
         return start + currentSize;
     }
 
+    if (dynamic_cast<ast::ImplicitValueInitExpr *>(&initializer) != nullptr) {
+        return start + 1;
+    }
+
     if (root || start >= values.size()) {
         return start;
     }
@@ -1029,13 +1412,13 @@ SemanticAnalysis::evalConstUnary(ast::UnaryOpcode opcode, ConstValue value) cons
         return {};
     }
     if (opcode == ast::UnaryOpcode::Minus) {
-        if (value.base == ast::BuiltinType::Float) {
+        if (isFloating(value.base)) {
             value.floatValue = -value.floatValue;
         } else {
             value.intValue = -value.intValue;
         }
     } else if (opcode == ast::UnaryOpcode::LogicalNot) {
-        const bool truthy = value.base == ast::BuiltinType::Float
+        const bool truthy = isFloating(value.base)
                                 ? value.floatValue != 0.0
                                 : value.intValue != 0;
         value.base = ast::BuiltinType::Int;
@@ -1047,14 +1430,17 @@ SemanticAnalysis::evalConstUnary(ast::UnaryOpcode opcode, ConstValue value) cons
 
 SemanticAnalysis::ConstValue SemanticAnalysis::evalConstBinary(
     ast::BinaryOpcode opcode, ConstValue lhs, ConstValue rhs) const {
+    if (opcode == ast::BinaryOpcode::Assign) {
+        return {};
+    }
     if (!lhs.known || !rhs.known || !isNumeric(lhs.base) || !isNumeric(rhs.base)) {
         return {};
     }
 
-    auto asDouble = [](ConstValue value) {
-        return value.base == ast::BuiltinType::Float
+    auto asFloat = [](ConstValue value) {
+        return isFloating(value.base)
                    ? value.floatValue
-                   : static_cast<double>(value.intValue);
+                   : static_cast<float>(value.intValue);
     };
 
     ConstValue result;
@@ -1071,13 +1457,13 @@ SemanticAnalysis::ConstValue SemanticAnalysis::evalConstBinary(
 
     if (isArithmeticOperator(opcode)) {
         result.base =
-            (lhs.base == ast::BuiltinType::Float || rhs.base == ast::BuiltinType::Float)
+            (isFloating(lhs.base) || isFloating(rhs.base))
                 ? ast::BuiltinType::Float
                 : ast::BuiltinType::Int;
-        if (result.base == ast::BuiltinType::Float) {
-            const double l = asDouble(lhs);
-            const double r = asDouble(rhs);
-            if (opcode == ast::BinaryOpcode::Div && r == 0.0) {
+        if (isFloating(result.base)) {
+            const float l = asFloat(lhs);
+            const float r = asFloat(rhs);
+            if (opcode == ast::BinaryOpcode::Div && r == 0.0f) {
                 return {};
             }
             if (opcode == ast::BinaryOpcode::Mul) {
@@ -1107,8 +1493,8 @@ SemanticAnalysis::ConstValue SemanticAnalysis::evalConstBinary(
         return result;
     }
 
-    const double l = asDouble(lhs);
-    const double r = asDouble(rhs);
+    const float l = asFloat(lhs);
+    const float r = asFloat(rhs);
     result.base = ast::BuiltinType::Int;
     if (opcode == ast::BinaryOpcode::Less) {
         result.intValue = l < r;
@@ -1123,9 +1509,9 @@ SemanticAnalysis::ConstValue SemanticAnalysis::evalConstBinary(
     } else if (opcode == ast::BinaryOpcode::NotEqual) {
         result.intValue = l != r;
     } else if (opcode == ast::BinaryOpcode::LogicalAnd) {
-        result.intValue = (l != 0.0) && (r != 0.0);
+        result.intValue = (l != 0.0f) && (r != 0.0f);
     } else if (opcode == ast::BinaryOpcode::LogicalOr) {
-        result.intValue = (l != 0.0) || (r != 0.0);
+        result.intValue = (l != 0.0f) || (r != 0.0f);
     } else {
         result.known = false;
     }
@@ -1137,15 +1523,16 @@ SemanticAnalysis::convertConstValue(ConstValue value, ast::Type target) const {
     if (!value.known) {
         return value;
     }
-    if (target.base == ast::BuiltinType::Int && value.base == ast::BuiltinType::Float) {
+    if (target.base == ast::BuiltinType::Int && isFloating(value.base)) {
         value.intValue = static_cast<long long>(value.floatValue);
         value.floatValue = 0.0;
         value.base = ast::BuiltinType::Int;
-    } else if (target.base == ast::BuiltinType::Float &&
-               value.base == ast::BuiltinType::Int) {
-        value.floatValue = static_cast<double>(value.intValue);
+    } else if (isFloating(target.base) && value.base == ast::BuiltinType::Int) {
+        value.floatValue = static_cast<float>(value.intValue);
         value.intValue = 0;
-        value.base = ast::BuiltinType::Float;
+        value.base = target.base;
+    } else if (isFloating(target.base) && isFloating(value.base)) {
+        value.base = target.base;
     }
     return value;
 }
@@ -1158,13 +1545,100 @@ bool SemanticAnalysis::isIntRange(ConstValue value) const {
         return value.intValue >= std::numeric_limits<int>::min() &&
                value.intValue <= std::numeric_limits<int>::max();
     }
-    if (value.base == ast::BuiltinType::Float) {
+    if (isFloating(value.base)) {
         return value.floatValue >=
-                   static_cast<double>(std::numeric_limits<int>::min()) &&
+                   static_cast<float>(std::numeric_limits<int>::min()) &&
                value.floatValue <=
-                   static_cast<double>(std::numeric_limits<int>::max());
+                   static_cast<float>(std::numeric_limits<int>::max());
     }
     return false;
+}
+
+void SemanticAnalysis::applyArrayToPointerDecay(std::unique_ptr<ast::Expr> &expr) {
+    if (expr == nullptr) {
+        return;
+    }
+
+    if (auto *cast = dynamic_cast<ast::ImplicitCastExpr *>(expr.get())) {
+        if (cast->kind == ast::CastKind::ArrayToPointerDecay) {
+            return;
+        }
+    }
+
+    ast::Type source = expr->hasType ? expr->inferredType : inferExpr(*expr, false);
+    if (!source.isArray()) {
+        return;
+    }
+
+    ast::Type target = arrayDecayPointerType(source);
+    auto cast = std::make_unique<ast::ImplicitCastExpr>(
+        expr->location(), ast::CastKind::ArrayToPointerDecay, target, std::move(expr));
+    setExprType(*cast, target);
+    expr = std::move(cast);
+}
+
+void SemanticAnalysis::applyLValueToRValue(std::unique_ptr<ast::Expr> &expr) {
+    if (expr == nullptr) {
+        return;
+    }
+
+    if (dynamic_cast<ast::ImplicitCastExpr *>(expr.get()) != nullptr) {
+        return;
+    }
+
+    ast::Type source = expr->hasType ? expr->inferredType : inferExpr(*expr, false);
+    if (!source.isScalar() && !source.isPointer) {
+        return;
+    }
+
+    if (!isAssignableLValue(*expr)) {
+        return;
+    }
+
+    source.isConst = false;
+    auto cast = std::make_unique<ast::ImplicitCastExpr>(
+        expr->location(), ast::CastKind::LValueToRValue, source, std::move(expr));
+    setExprType(*cast, source);
+    expr = std::move(cast);
+}
+
+void SemanticAnalysis::applyImplicitCast(std::unique_ptr<ast::Expr> &expr,
+                                         ast::Type target) {
+    if (expr == nullptr || target.isArray()) {
+        return;
+    }
+
+    ast::Type source = expr->hasType ? expr->inferredType : inferExpr(*expr, false);
+    if (source.isArray() || source.base == ast::BuiltinType::Invalid ||
+        target.base == ast::BuiltinType::Invalid ||
+        source.base == target.base) {
+        return;
+    }
+    if (!isNumeric(source.base) || !isNumeric(target.base)) {
+        return;
+    }
+    if (auto *cast = dynamic_cast<ast::ImplicitCastExpr *>(expr.get())) {
+        if (cast->kind == ast::CastKind::IntToFloat ||
+            cast->kind == ast::CastKind::FloatToInt) {
+            return;
+        }
+    }
+
+    ast::CastKind kind;
+    if (source.base == ast::BuiltinType::Int && isFloating(target.base)) {
+        kind = ast::CastKind::IntToFloat;
+    } else if (isFloating(source.base) && target.base == ast::BuiltinType::Int) {
+        kind = ast::CastKind::FloatToInt;
+    } else {
+        return;
+    }
+
+    target.shape.clear();
+    target.isConst = false;
+    auto cast = std::make_unique<ast::ImplicitCastExpr>(expr->location(), kind, target,
+                                                        std::move(expr));
+    setExprType(*cast, target);
+    expr = std::move(cast);
 }
 
 bool SemanticAnalysis::isFloatRange(ConstValue value) const {
@@ -1172,12 +1646,12 @@ bool SemanticAnalysis::isFloatRange(ConstValue value) const {
         return false;
     }
 
-    const double numeric = value.base == ast::BuiltinType::Float
+    const float numeric = isFloating(value.base)
                                ? value.floatValue
-                               : static_cast<double>(value.intValue);
+                               : static_cast<float>(value.intValue);
     return std::isfinite(numeric) &&
-           numeric >= -static_cast<double>(std::numeric_limits<float>::max()) &&
-           numeric <= static_cast<double>(std::numeric_limits<float>::max());
+           numeric >= -std::numeric_limits<float>::max() &&
+           numeric <= std::numeric_limits<float>::max();
 }
 
 bool SemanticAnalysis::checkValueRange(ast::Type target, ConstValue value) const {
@@ -1194,8 +1668,7 @@ bool SemanticAnalysis::isConstTruthy(ConstValue value) const {
     if (!value.known || !isNumeric(value.base)) {
         return false;
     }
-    return value.base == ast::BuiltinType::Float ? value.floatValue != 0.0
-                                                 : value.intValue != 0;
+    return isFloating(value.base) ? value.floatValue != 0.0 : value.intValue != 0;
 }
 
 ast::Type SemanticAnalysis::setExprType(ast::Expr &expr, ast::Type type) const {
@@ -1234,12 +1707,12 @@ long long SemanticAnalysis::parseIntLiteral(const std::string &text) {
     }
 }
 
-double SemanticAnalysis::parseFloatLiteral(const std::string &text) {
+float SemanticAnalysis::parseFloatLiteral(const std::string &text) {
     errno = 0;
     char *end = nullptr;
-    const double value = std::strtod(text.c_str(), &end);
+    const float value = std::strtof(text.c_str(), &end);
     if (errno != 0 || end == text.c_str()) {
-        return 0.0;
+        return 0.0f;
     }
     return value;
 }
