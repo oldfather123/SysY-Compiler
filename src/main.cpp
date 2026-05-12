@@ -5,11 +5,8 @@
 #include "frontend/SemanticAnalysis.h"
 #include "frontend/generated/SysYLexer.h"
 #include "frontend/generated/SysYParser.h"
-<<<<<<< HEAD
-=======
 #include "codegen/CodeGen.h"
 #include "codegen/IRDumper.h"
->>>>>>> of666
 
 #include <fstream>
 #include <iostream>
@@ -25,19 +22,12 @@ struct Options {
     std::string inputPath;
     std::string outputPath;
     std::string astOutputPath;
-<<<<<<< HEAD
-=======
     std::string irOutputPath;
->>>>>>> of666
 };
 
 void printUsage(const char *program) {
     std::cerr << "用法: " << program
-<<<<<<< HEAD
-              << " <input.sy> [output.txt] [--dump-ast ast.txt]\n";
-=======
               << " <input.sy> [output.txt] [--dump-ast ast.txt] [--dump-ir ir.txt]\n";
->>>>>>> of666
 }
 
 bool parseArgs(int argc, char *argv[], Options &options) {
@@ -58,8 +48,6 @@ bool parseArgs(int argc, char *argv[], Options &options) {
             }
             continue;
         }
-<<<<<<< HEAD
-=======
         if (arg == "--dump-ir") {
             if (i + 1 >= argc) {
                 return false;
@@ -70,7 +58,6 @@ bool parseArgs(int argc, char *argv[], Options &options) {
             }
             continue;
         }
->>>>>>> of666
 
         if (!arg.empty() && arg[0] == '-') {
             return false;
