@@ -21,6 +21,7 @@ cmake_install.cmake
 
 # Generated project outputs
 /src/test_output/
+/test/
 
 # IDE and editor files
 .idea/
