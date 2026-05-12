@@ -98,23 +98,6 @@ cmake --build src/build
 
 ## 6. 测试脚本
 
-### 6.1 安装 Git LFS
-
-```bash
-sudo apt update
-sudo apt install git-lfs
-git lfs install
-```
-
-### 6.2 下载解压测试集
-
-```bash
-git lfs pull
-unzip test.zip
-```
-
-### 6.3 运行各种脚本
-
 当前主要包含以下两个脚本：
 
 - `src/scripts/test.sh`：运行 SysY 测试用例，并将程序输出与标准输出进行对比。
@@ -123,6 +106,9 @@ unzip test.zip
 常见用法如下：
 
 ```bash
+# 修改后重新build
+cmake --build src/build
+
 # 运行整个测试目录
 src/scripts/test.sh test/2026/functional
 
