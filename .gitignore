@@ -20,7 +20,10 @@ cmake_install.cmake
 *.exe
 
 # Generated project outputs
+<<<<<<< HEAD
 /test/
+=======
+>>>>>>> of666
 /src/test_output/
 
 # IDE and editor files

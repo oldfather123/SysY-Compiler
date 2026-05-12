@@ -5,6 +5,11 @@
 #include "frontend/SemanticAnalysis.h"
 #include "frontend/generated/SysYLexer.h"
 #include "frontend/generated/SysYParser.h"
+<<<<<<< HEAD
+=======
+#include "codegen/CodeGen.h"
+#include "codegen/IRDumper.h"
+>>>>>>> of666
 
 #include <fstream>
 #include <iostream>
@@ -20,11 +25,19 @@ struct Options {
     std::string inputPath;
     std::string outputPath;
     std::string astOutputPath;
+<<<<<<< HEAD
+=======
+    std::string irOutputPath;
+>>>>>>> of666
 };
 
 void printUsage(const char *program) {
     std::cerr << "用法: " << program
+<<<<<<< HEAD
               << " <input.sy> [output.txt] [--dump-ast ast.txt]\n";
+=======
+              << " <input.sy> [output.txt] [--dump-ast ast.txt] [--dump-ir ir.txt]\n";
+>>>>>>> of666
 }
 
 bool parseArgs(int argc, char *argv[], Options &options) {
@@ -45,6 +58,19 @@ bool parseArgs(int argc, char *argv[], Options &options) {
             }
             continue;
         }
+<<<<<<< HEAD
+=======
+        if (arg == "--dump-ir") {
+            if (i + 1 >= argc) {
+                return false;
+            }
+            options.irOutputPath = argv[++i];
+            if (options.irOutputPath.empty() || options.irOutputPath[0] == '-') {
+                return false;
+            }
+            continue;
+        }
+>>>>>>> of666
 
         if (!arg.empty() && arg[0] == '-') {
             return false;
@@ -154,11 +180,23 @@ int main(int argc, char *argv[]) {
         dumper.dump(*ast);
     }
 
-    // 7. 解释执行并输出文件
+    // 7. 按需输出 IR
+    if (!options.irOutputPath.empty()) {
+        std::ofstream irOutputFile(options.irOutputPath);
+        if (!irOutputFile) {
+            std::cerr << "无法打开 IR 输出文件: " << options.irOutputPath
+                      << '\n';
+            return 1;
+        }
+        codegen::CodeGen codegen(*ast);
+        codegen::IRDumper dumper(irOutputFile);
+        dumper.dump(*codegen.region());
+    }
+
+    // 8. 解释执行并输出文件
     Interpreter interpreter(std::cin);
     try {
         const int returnCode = interpreter.run(*ast);
-        std::cout << interpreter.takeTimerOutput();
         const std::string result =
             formatResult(interpreter.takeOutput(), returnCode);
         if (options.outputPath.empty()) {
