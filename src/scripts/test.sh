@@ -18,7 +18,7 @@ For each .sy case:
   - Non-empty stderr is saved to src/test_output/<target-dir>/err/<case>.err.
   - Non-empty diff is saved to src/test_output/<target-dir>/diff/<case>.diff.
   - AST is always dumped to src/test_output/<target-dir>/ast/<case>.ast.
-<<<<<<< HEAD
+  - IR is always dumped to src/test_output/<target-dir>/ir/<case>.ir.
 
 Environment variables:
   RUN_SY_TIMEOUT   timeout for each case (default: 25s)
@@ -62,6 +62,7 @@ out_dir=
 err_dir=
 diff_dir=
 ast_dir=
+ir_dir=
 
 parse_args "$@"
 
@@ -113,70 +114,14 @@ resolve_target() {
     err_dir="$out_root/err"
     diff_dir="$out_root/diff"
     ast_dir="$out_root/ast"
+    ir_dir="$out_root/ir"
 }
 
 ensure_dependencies
 ensure_compiler
 resolve_target
 
-mkdir -p "$out_dir" "$err_dir" "$diff_dir" "$ast_dir"
-=======
-  - IR is always dumped to src/test_output/<target-dir>/ir/<case>.ir.
-  - Default timeout is 25s; override with RUN_SY_TIMEOUT.
-EOF
-}
-
-if [[ $# -ne 1 ]]; then
-    usage
-    exit 1
-fi
-
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-src_root=$(cd "$script_dir/.." && pwd)
-repo_root=$(cd "$src_root/.." && pwd)
-tests_root="$repo_root/test"
-
-target=$1
-compiler="$src_root/build/compiler"
-case_timeout=${RUN_SY_TIMEOUT:-25s}
-
-if [[ ! -x "$compiler" ]]; then
-    echo "compiler not found: $compiler" >&2
-    echo "try: cmake --build src/build" >&2
-    exit 1
-fi
-
-if [[ ! -d "$target" && ! -f "$target" ]]; then
-    echo "test target not found: $target" >&2
-    exit 1
-fi
-
-target_abs=$(realpath "$target")
-if [[ "$target_abs" != "$tests_root" && "$target_abs" != "$tests_root"/* ]]; then
-    echo "test target must be inside: $tests_root" >&2
-    exit 1
-fi
-
-if [[ -f "$target_abs" && "$target_abs" != *.sy ]]; then
-    echo "single-file target must be a .sy file: $target" >&2
-    exit 1
-fi
-
-suite_dir=$target_abs
-if [[ -f "$target_abs" ]]; then
-    suite_dir=$(dirname "$target_abs")
-fi
-
-suite_rel=$(realpath --relative-to="$tests_root" "$suite_dir")
-out_root="$src_root/test_output/$suite_rel"
-out_dir="$out_root/out"
-err_dir="$out_root/err"
-diff_dir="$out_root/diff"
-ast_dir="$out_root/ast"
-ir_dir="$out_root/ir"
-
 mkdir -p "$out_dir" "$err_dir" "$diff_dir" "$ast_dir" "$ir_dir"
->>>>>>> of666
 
 total=0
 passed=0
@@ -190,17 +135,18 @@ case_name() {
     basename "${sy_file%.sy}"
 }
 
-<<<<<<< HEAD
 clear_case_outputs() {
     local actual_file=$1
     local err_file=$2
     local diff_file=$3
     local ast_file=$4
+    local ir_file=$5
 
     : > "$actual_file"
     : > "$err_file"
     : > "$diff_file"
     rm -f "$ast_file"
+    rm -f "$ir_file"
 }
 
 print_case_paths() {
@@ -208,8 +154,9 @@ print_case_paths() {
     local err_file=$2
     local diff_file=$3
     local ast_file=$4
-    local show_err=$5
-    local show_diff=$6
+    local ir_file=$5
+    local show_err=$6
+    local show_diff=$7
 
     echo "  out:  $actual_file"
     if [[ $show_err == true ]]; then
@@ -219,6 +166,7 @@ print_case_paths() {
         echo "  diff: $diff_file"
     fi
     echo "  ast:  $ast_file"
+    echo "  ir:   $ir_file"
 }
 
 cleanup_optional_files() {
@@ -233,30 +181,20 @@ cleanup_optional_files() {
     fi
 }
 
-=======
->>>>>>> of666
 run_with_input() {
     local sy_file=$1
     local out_file=$2
     local ast_file=$3
-<<<<<<< HEAD
-    local err_file=$4
-    local in_file="${sy_file%.sy}.in"
-    local input_file=/dev/null
-
-=======
     local ir_file=$4
     local err_file=$5
-
     local in_file="${sy_file%.sy}.in"
     local input_file=/dev/null
->>>>>>> of666
+
     if [[ -f "$in_file" ]]; then
         input_file=$in_file
     fi
 
-<<<<<<< HEAD
-    timeout "$case_timeout" "$compiler" "$sy_file" "$out_file" --dump-ast "$ast_file" \
+    timeout "$case_timeout" "$compiler" "$sy_file" "$out_file" --dump-ast "$ast_file" --dump-ir "$ir_file" \
         < "$input_file" 2>> "$err_file"
 }
 
@@ -276,10 +214,11 @@ record_timeout() {
     local actual_file=$2
     local err_file=$3
     local ast_file=$4
+    local ir_file=$5
 
     echo "TIMEOUT(${case_timeout}) $sy_file"
     echo "timeout after ${case_timeout}: $sy_file" > "$err_file"
-    print_case_paths "$actual_file" "$err_file" "" "$ast_file" true false
+    print_case_paths "$actual_file" "$err_file" "" "$ast_file" "$ir_file" true false
     timed_out=$((timed_out + 1))
     exit_code=1
 }
@@ -289,9 +228,10 @@ record_run_failure() {
     local actual_file=$2
     local err_file=$3
     local ast_file=$4
+    local ir_file=$5
 
     echo "FAIL(run) $sy_file"
-    print_case_paths "$actual_file" "$err_file" "" "$ast_file" true false
+    print_case_paths "$actual_file" "$err_file" "" "$ast_file" "$ir_file" true false
     failed=$((failed + 1))
     exit_code=1
 }
@@ -303,6 +243,7 @@ record_missing_expected() {
     local err_file=$4
     local diff_file=$5
     local ast_file=$6
+    local ir_file=$7
     local show_err=false
 
     echo "SKIP(no .out) $sy_file"
@@ -310,7 +251,7 @@ record_missing_expected() {
     if [[ -s "$err_file" ]]; then
         show_err=true
     fi
-    print_case_paths "$actual_file" "$err_file" "" "$ast_file" "$show_err" false
+    print_case_paths "$actual_file" "$err_file" "" "$ast_file" "$ir_file" "$show_err" false
     cleanup_optional_files "$err_file" ""
     skipped=$((skipped + 1))
 }
@@ -321,13 +262,14 @@ record_diff_failure() {
     local err_file=$3
     local diff_file=$4
     local ast_file=$5
+    local ir_file=$6
     local show_err=false
 
     echo "FAIL(diff) $sy_file"
     if [[ -s "$err_file" ]]; then
         show_err=true
     fi
-    print_case_paths "$actual_file" "$err_file" "$diff_file" "$ast_file" "$show_err" true
+    print_case_paths "$actual_file" "$err_file" "$diff_file" "$ast_file" "$ir_file" "$show_err" true
     cleanup_optional_files "$err_file" "$diff_file"
     failed=$((failed + 1))
     exit_code=1
@@ -341,29 +283,17 @@ record_success() {
     echo "PASS $sy_file"
     cleanup_optional_files "$err_file" "$diff_file"
     passed=$((passed + 1))
-=======
-    timeout "$case_timeout" "$compiler" "$sy_file" "$out_file" --dump-ast "$ast_file" --dump-ir "$ir_file" \
-        < "$input_file" > /dev/null 2>> "$err_file"
-}
-
-cleanup_err_file() {
-    local err_file=$1
-    if [[ -s "$err_file" ]]; then
-        return
-    fi
-    rm -f "$err_file"
->>>>>>> of666
 }
 
 run_case() {
     local sy_file=$1
     local base
-<<<<<<< HEAD
     local expected_file
     local actual_file
     local err_file
     local diff_file
     local ast_file
+    local ir_file
     local status
 
     base=$(case_name "$sy_file")
@@ -372,72 +302,32 @@ run_case() {
     err_file="$err_dir/${base}.err"
     diff_file="$diff_dir/${base}.diff"
     ast_file="$ast_dir/${base}.ast"
+    ir_file="$ir_dir/${base}.ir"
 
     total=$((total + 1))
-    clear_case_outputs "$actual_file" "$err_file" "$diff_file" "$ast_file"
-
-    run_with_input "$sy_file" "$actual_file" "$ast_file" "$err_file"
-    status=$?
-
-    if [[ $status -eq 124 ]]; then
-        record_timeout "$sy_file" "$actual_file" "$err_file" "$ast_file"
-=======
-    base=$(case_name "$sy_file")
-    local expected_file="${sy_file%.sy}.out"
-    local actual_file="$out_dir/${base}.out"
-    local err_file="$err_dir/${base}.err"
-    local diff_file="$diff_dir/${base}.diff"
-    local ast_file="$ast_dir/${base}.ast"
-    local ir_file="$ir_dir/${base}.ir"
-    local status
-
-    total=$((total + 1))
-    : > "$actual_file"
-    : > "$err_file"
-    : > "$diff_file"
-    rm -f "$ast_file"
-    rm -f "$ir_file"
+    clear_case_outputs "$actual_file" "$err_file" "$diff_file" "$ast_file" "$ir_file"
 
     run_with_input "$sy_file" "$actual_file" "$ast_file" "$ir_file" "$err_file"
     status=$?
 
     if [[ $status -eq 124 ]]; then
-        echo "TIMEOUT(${case_timeout}) $sy_file"
-        echo "timeout after ${case_timeout}: $sy_file" > "$err_file"
-        echo "  err:  $err_file"
-        echo "  out:  $actual_file"
-        echo "  ast:  $ast_file"
-        echo "  ir:   $ir_file"
-        timed_out=$((timed_out + 1))
-        exit_code=1
->>>>>>> of666
+        record_timeout "$sy_file" "$actual_file" "$err_file" "$ast_file" "$ir_file"
         return
     fi
 
     if [[ $status -ne 0 ]]; then
-<<<<<<< HEAD
-        record_run_failure "$sy_file" "$actual_file" "$err_file" "$ast_file"
-=======
-        echo "FAIL(run) $sy_file"
-        echo "  out:  $actual_file"
-        echo "  err:  $err_file"
-        echo "  ast:  $ast_file"
-        echo "  ir:   $ir_file"
-        failed=$((failed + 1))
-        exit_code=1
->>>>>>> of666
+        record_run_failure "$sy_file" "$actual_file" "$err_file" "$ast_file" "$ir_file"
         return
     fi
 
     if [[ ! -f "$expected_file" ]]; then
-<<<<<<< HEAD
         record_missing_expected "$sy_file" "$expected_file" "$actual_file" "$err_file" \
-            "$diff_file" "$ast_file"
+            "$diff_file" "$ast_file" "$ir_file"
         return
     fi
 
     if ! normalized_diff "$expected_file" "$actual_file" "$diff_file"; then
-        record_diff_failure "$sy_file" "$actual_file" "$err_file" "$diff_file" "$ast_file"
+        record_diff_failure "$sy_file" "$actual_file" "$err_file" "$diff_file" "$ast_file" "$ir_file"
         return
     fi
 
@@ -445,16 +335,11 @@ run_case() {
 }
 
 run_target() {
-    local printed_case=false
     local sy_file
 
     if [[ -d "$target_abs" ]]; then
         while IFS= read -r sy_file; do
-            if [[ $printed_case == true ]]; then
-                echo
-            fi
             run_case "$sy_file"
-            printed_case=true
         done < <(find "$target_abs" -maxdepth 1 -type f -name '*.sy' | sort)
         return
     fi
@@ -469,56 +354,6 @@ print_summary() {
 
 run_target
 print_summary
-=======
-        echo "SKIP(no .out) $sy_file"
-        echo "missing expected file: $expected_file" > "$diff_file"
-        echo "  out:  $actual_file"
-        if [[ -s "$err_file" ]]; then
-            echo "  err:  $err_file"
-        else
-            cleanup_err_file "$err_file"
-        fi
-        echo "  ast:  $ast_file"
-        echo "  ir:   $ir_file"
-        skipped=$((skipped + 1))
-        return
-    fi
-
-    if diff -u \
-        <(awk '{ sub(/\r$/, ""); print }' "$expected_file") \
-        <(awk '{ sub(/\r$/, ""); print }' "$actual_file") \
-        > "$diff_file"; then
-        echo "PASS $sy_file"
-        rm -f "$diff_file"
-        cleanup_err_file "$err_file"
-        passed=$((passed + 1))
-    else
-        echo "FAIL(diff) $sy_file"
-        echo "  out:  $actual_file"
-        if [[ -s "$err_file" ]]; then
-            echo "  err:  $err_file"
-        else
-            cleanup_err_file "$err_file"
-        fi
-        echo "  diff: $diff_file"
-        echo "  ast:  $ast_file"
-        echo "  ir:   $ir_file"
-        failed=$((failed + 1))
-        exit_code=1
-    fi
-}
-
-if [[ -d "$target_abs" ]]; then
-    while IFS= read -r sy_file; do
-        run_case "$sy_file"
-    done < <(find "$target_abs" -maxdepth 1 -type f -name '*.sy' | sort)
-else
-    run_case "$target_abs"
-fi
-
-echo
-echo "total=$total passed=$passed timeout=$timed_out failed=$failed skipped=$skipped"
->>>>>>> of666
 
 if [[ $total -eq 0 ]]; then
     echo "no .sy files found: $target" >&2
