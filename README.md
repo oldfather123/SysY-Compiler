@@ -98,10 +98,11 @@ cmake --build src/build
 
 ## 6. 测试脚本
 
-当前主要包含以下两个脚本：
+当前主要包含以下三个脚本：
 
-- `src/scripts/test.sh`：运行 SysY 测试用例，并将程序输出与标准输出进行对比。
+- `src/scripts/test.sh`：运行 SysY 测试用例（解释器模式），将程序输出与标准输出进行对比。
 - `src/scripts/ast_diff.sh`：生成并比较 Clang AST 与本项目导出的 SysY AST，便于分析语义结构差异。
+- `src/scripts/asm_test.sh`：将 SysY 编译为 RISC-V 汇编，交叉编译后通过 QEMU 运行，验证目标代码生成正确性。
 
 常见用法如下：
 
@@ -109,11 +110,17 @@ cmake --build src/build
 # 修改后重新build
 cmake --build src/build
 
-# 运行整个测试目录
+# 运行整个测试目录（解释器）
 src/scripts/test.sh test/2026/functional
 
-# 运行单个测试文件
+# 运行单个测试文件（解释器）
 src/scripts/test.sh test/2026/functional/00_main.sy
+
+# 运行整个测试目录（RISC-V 汇编 + QEMU）
+src/scripts/asm_test.sh test/2026/functional
+
+# 运行单个测试文件（RISC-V 汇编 + QEMU）
+src/scripts/asm_test.sh test/2026/functional/00_main.sy
 
 # 对比整个测试目录的 AST
 src/scripts/ast_diff.sh test/2026/functional
@@ -130,6 +137,12 @@ src/test_output/<target-dir>/
 ```bash
 RUN_SY_TIMEOUT=60s src/scripts/test.sh test/2026/functional
 AST_DIFF_TIMEOUT=60s src/scripts/ast_diff.sh test/2026/functional
+```
+
+`asm_test.sh` 额外依赖 RISC-V 工具链和 QEMU：
+
+```bash
+sudo apt-get install -y gcc-riscv64-linux-gnu qemu-user-static
 ```
 
 更完整的参数说明和输出格式说明见 src/scripts/README.md。

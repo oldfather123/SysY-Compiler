@@ -129,7 +129,20 @@ CodeGen::CodeGen(const ast::TranslationUnit &unit)
     builder_.createBlock("entry");
 
     for (const auto &decl : unit.declarations) {
-        emitDecl(*decl);
+        if (const auto *var = dynamic_cast<const ast::VarDecl *>(decl.get())) {
+            emitVarDecl(*var, true);
+            continue;
+        }
+        if (dynamic_cast<const ast::FunctionDecl *>(decl.get()) != nullptr) {
+            continue;
+        }
+        throw std::logic_error("unsupported declaration node" + locText(*decl));
+    }
+
+    for (const auto &decl : unit.declarations) {
+        if (const auto *func = dynamic_cast<const ast::FunctionDecl *>(decl.get())) {
+            emitFunctionDecl(*func);
+        }
     }
 }
 
@@ -215,7 +228,7 @@ void CodeGen::emitVarDecl(const ast::VarDecl &decl, bool isGlobal) {
                         }
                     }
 
-                    if (initList.arrayFiller != nullptr) {
+                    if (!isGlobal) {
                         for (std::size_t i = 0; i < aggregateSize; ++i) {
                             if (!covered[i]) {
                                 emitZeroAt(startOffset + i);
@@ -233,6 +246,7 @@ void CodeGen::emitVarDecl(const ast::VarDecl &decl, bool isGlobal) {
 }
 
 void CodeGen::emitFunctionDecl(const ast::FunctionDecl &decl) {
+    builder_.createBlock("fn.decl." + decl.name + "." + std::to_string(blockId_++));
     const auto fnAttrs = std::vector<Attr>{{"name", decl.name},
                                            {"ret", typeTag(decl.returnType)},
                                            {"argc", std::to_string(decl.params.size())}};
@@ -244,11 +258,33 @@ void CodeGen::emitFunctionDecl(const ast::FunctionDecl &decl) {
     currentReturnType_ = decl.returnType;
     pushScope();
 
+    int intArgIdx = 0;
+    int floatArgIdx = 0;
+    int stackArgIdx = 0;
+
     for (std::size_t i = 0; i < decl.params.size(); ++i) {
         const ast::ParamDecl &param = *decl.params[i];
+        std::vector<Attr> argAttrs{{"idx", std::to_string(i)},
+                                   {"name", param.name},
+                                   {"type", typeTag(param.type)}};
+        if (isFloatType(param.type) && !param.type.isPointer) {
+            if (floatArgIdx < 8) {
+                argAttrs.emplace_back("reg", "fa" + std::to_string(floatArgIdx));
+            } else {
+                argAttrs.emplace_back("stack", std::to_string(stackArgIdx++));
+            }
+            floatArgIdx++;
+        } else {
+            if (intArgIdx < 8) {
+                argAttrs.emplace_back("reg", "a" + std::to_string(intArgIdx));
+            } else {
+                argAttrs.emplace_back("stack", std::to_string(stackArgIdx++));
+            }
+            intArgIdx++;
+        }
+
         Op *arg = builder_.createOp(Opcode::GetArgOp, toValueType(param.type), {},
-                                    std::vector<Attr>{{"idx", std::to_string(i)},
-                                                      {"name", param.name}});
+                                    std::move(argAttrs));
         Op *addr = builder_.createOp(Opcode::AllocaOp, ValueType::Int, {},
                                      std::vector<Attr>{{"name", param.name},
                                                        {"type", typeTag(param.type)},
@@ -291,7 +327,7 @@ void CodeGen::emitStmt(const ast::Stmt &stmt) {
     }
 
     if (const auto *ifStmt = dynamic_cast<const ast::IfStmt *>(&stmt)) {
-        Value cond = emitExpr(*ifStmt->condition);
+        Value cond = emitBoolExpr(*ifStmt->condition);
         BasicBlock *thenBlock = newBlock("if.then");
         BasicBlock *elseBlock =
             ifStmt->elseBranch != nullptr ? newBlock("if.else") : nullptr;
@@ -320,7 +356,7 @@ void CodeGen::emitStmt(const ast::Stmt &stmt) {
         emitGoto(condBlock);
 
         builder_.setInsertPoint(condBlock);
-        Value cond = emitExpr(*whileStmt->condition);
+        Value cond = emitBoolExpr(*whileStmt->condition);
         emitBranch(cond, bodyBlock, endBlock);
 
         loopTargets_.push_back({endBlock, condBlock});
@@ -411,7 +447,12 @@ Value CodeGen::emitExpr(const ast::Expr &expr) {
 
     if (const auto *subscript = dynamic_cast<const ast::ArraySubscriptExpr *>(&expr)) {
         Value addr = emitLValueAddress(*subscript);
-        Op *load = builder_.createOp(Opcode::LoadOp, toValueType(subscript->inferredType), {addr});
+        if (subscript->inferredType.isArray()) {
+            return addr;
+        }
+        Op *load = builder_.createOp(
+            Opcode::LoadOp, toValueType(subscript->inferredType), {addr},
+            std::vector<Attr>{{"type", typeTag(subscript->inferredType)}});
         return Value(load);
     }
 
@@ -437,7 +478,8 @@ Value CodeGen::emitDeclRef(const ast::DeclRefExpr &expr) {
     if (sym->type.isArray()) {
         return sym->address;
     }
-    Op *load = builder_.createOp(Opcode::LoadOp, toValueType(sym->type), {sym->address});
+    Op *load = builder_.createOp(Opcode::LoadOp, toValueType(sym->type), {sym->address},
+                                 std::vector<Attr>{{"type", typeTag(sym->type)}});
     return Value(load);
 }
 
@@ -455,7 +497,8 @@ Value CodeGen::emitLValueAddress(const ast::Expr &expr) {
             throw std::logic_error("unknown symbol: " + ref->name + locText(*ref));
         }
         if (sym->type.isPointer) {
-            Op *ptr = builder_.createOp(Opcode::LoadOp, ValueType::Int, {sym->address});
+            Op *ptr = builder_.createOp(Opcode::LoadOp, ValueType::Int, {sym->address},
+                                        std::vector<Attr>{{"type", typeTag(sym->type)}});
             return Value(ptr);
         }
         return sym->address;
@@ -468,7 +511,8 @@ Value CodeGen::emitLValueAddress(const ast::Expr &expr) {
         std::size_t strideElements = 1;
         const ast::Type baseType = subscript->base->inferredType;
         if (!baseType.shape.empty()) {
-            strideElements = productFromShape(baseType.shape, 1);
+            strideElements =
+                productFromShape(baseType.shape, baseType.isPointer ? 0 : 1);
         }
         const std::size_t strideBytes = strideElements * 4;
         Op *stride = builder_.createOp(Opcode::IntOp, ValueType::Int, {},
@@ -487,13 +531,14 @@ Value CodeGen::emitUnary(const ast::UnaryOperator &expr) {
         return emitExpr(*expr.operand);
     }
 
-    Value operand = emitExpr(*expr.operand);
     if (expr.opcode == ast::UnaryOpcode::Minus) {
+        Value operand = emitExpr(*expr.operand);
         Op *op = builder_.createOp(isFloatType(expr.inferredType) ? Opcode::MinusFOp : Opcode::MinusOp,
                                    toValueType(expr.inferredType), {operand});
         return Value(op);
     }
 
+    Value operand = emitBoolExpr(*expr.operand);
     Op *op = builder_.createOp(Opcode::NotOp, ValueType::Int, {operand});
     return Value(op);
 }
@@ -508,12 +553,37 @@ Value CodeGen::emitBinary(const ast::BinaryOperator &expr) {
 
     if (expr.opcode == ast::BinaryOpcode::LogicalAnd ||
         expr.opcode == ast::BinaryOpcode::LogicalOr) {
-        Value lhs = emitExpr(*expr.lhs);
-        Value rhs = emitExpr(*expr.rhs);
-        Op *op = builder_.createOp(expr.opcode == ast::BinaryOpcode::LogicalAnd ? Opcode::AndIOp
-                                                                                 : Opcode::OrIOp,
-                                   ValueType::Int, {lhs, rhs});
-        return Value(op);
+        Op *resultAddr = builder_.createOp(
+            Opcode::AllocaOp, ValueType::Int, {},
+            std::vector<Attr>{{"type", "int"}, {"size", "4"}});
+        BasicBlock *rhsBlock = newBlock("logic.rhs");
+        BasicBlock *shortBlock = newBlock("logic.short");
+        BasicBlock *endBlock = newBlock("logic.end");
+
+        Value lhs = emitBoolExpr(*expr.lhs);
+        if (expr.opcode == ast::BinaryOpcode::LogicalAnd) {
+            emitBranch(lhs, rhsBlock, shortBlock);
+        } else {
+            emitBranch(lhs, shortBlock, rhsBlock);
+        }
+
+        builder_.setInsertPoint(shortBlock);
+        Op *shortValue = builder_.createOp(
+            Opcode::IntOp, ValueType::Int, {},
+            std::vector<Attr>{{"value", expr.opcode == ast::BinaryOpcode::LogicalAnd ? "0" : "1"}});
+        builder_.createOp(Opcode::StoreOp, ValueType::Void, {Value(shortValue), Value(resultAddr)});
+        emitGoto(endBlock);
+
+        builder_.setInsertPoint(rhsBlock);
+        Value rhs = emitBoolExpr(*expr.rhs);
+        builder_.createOp(Opcode::StoreOp, ValueType::Void, {rhs, Value(resultAddr)});
+        emitGoto(endBlock);
+
+        builder_.setInsertPoint(endBlock);
+        Op *load = builder_.createOp(
+            Opcode::LoadOp, ValueType::Int, {Value(resultAddr)},
+            std::vector<Attr>{{"type", "int"}});
+        return Value(load);
     }
 
     Value lhs = emitExpr(*expr.lhs);
@@ -586,8 +656,13 @@ Value CodeGen::emitCall(const ast::CallExpr &expr) {
 
     const ValueType retType = toValueType(expr.inferredType);
     Op *op = builder_.createOp(Opcode::CallOp, retType, std::move(args),
-                               std::vector<Attr>{{"callee", expr.callee}});
+                               std::vector<Attr>{{"callee", expr.callee},
+                                                 {"ret", typeTag(expr.inferredType)}});
     return Value(op);
+}
+
+Value CodeGen::emitBoolExpr(const ast::Expr &expr) {
+    return toBoolValue(emitExpr(expr), expr.inferredType);
 }
 
 Value CodeGen::emitImplicitCast(const ast::ImplicitCastExpr &expr) {
@@ -612,6 +687,20 @@ Value CodeGen::emitImplicitCast(const ast::ImplicitCastExpr &expr) {
     }
 
     throw std::logic_error("unsupported implicit cast kind" + locText(expr));
+}
+
+Value CodeGen::toBoolValue(Value value, ast::Type type) {
+    if (type.isPointer || type.base == ast::BuiltinType::Int) {
+        Op *op = builder_.createOp(Opcode::SetNotZeroOp, ValueType::Int, {value});
+        return Value(op);
+    }
+    if (type.base == ast::BuiltinType::Float) {
+        Op *zero = builder_.createOp(Opcode::FloatOp, ValueType::Float, {},
+                                     std::vector<Attr>{{"value", "0.0"}});
+        Op *op = builder_.createOp(Opcode::NeFOp, ValueType::Int, {value, Value(zero)});
+        return Value(op);
+    }
+    return value;
 }
 
 CodeGen::Symbol *CodeGen::resolveLocal(const std::string &name) {
@@ -661,6 +750,9 @@ bool CodeGen::isFloatType(ast::Type type) {
 }
 
 ValueType CodeGen::toValueType(ast::Type type) {
+    if (type.isPointer || type.isArray()) {
+        return ValueType::Int;
+    }
     if (type.base == ast::BuiltinType::Float) {
         return ValueType::Float;
     }
@@ -675,6 +767,9 @@ std::string CodeGen::typeTag(ast::Type type) {
 }
 
 std::size_t CodeGen::allocSizeBytes(ast::Type type) {
+    if (type.isPointer) {
+        return 8;
+    }
     std::size_t elements = 1;
     if (type.isArray()) {
         for (long long dim : type.shape) {

@@ -41,7 +41,72 @@ src/test_output/<target-dir>/
 - `err/<case>.err`：标准错误输出（如有）
 - `diff/<case>.diff`：和标准输出的差异（如有）
 
-## 2. `ast_diff.sh`
+## 2. `asm_test.sh`
+
+用于将 SysY 程序编译为 RISC-V 汇编，交叉编译为可执行文件后通过 QEMU 运行，并与标准输出进行对比。
+
+### 依赖
+
+需要安装 RISC-V 交叉编译器和 QEMU 用户态模拟器：
+
+```bash
+sudo apt-get install -y gcc-riscv64-linux-gnu qemu-user-static
+```
+
+### 用法
+
+运行一个测试目录：
+
+```bash
+src/scripts/asm_test.sh test/2026/functional
+```
+
+运行单个测试文件：
+
+```bash
+src/scripts/asm_test.sh test/2026/functional/00_main.sy
+```
+
+可通过环境变量调整配置：
+
+```bash
+# 修改超时时间（默认 25s）
+RUN_SY_TIMEOUT=60s src/scripts/asm_test.sh test/2026/functional
+
+# 使用其他 QEMU 二进制
+QEMU=/path/to/qemu-riscv64 src/scripts/asm_test.sh test/2026/functional
+
+# 使用其他 RISC-V GCC
+RV_GCC=riscv64-unknown-linux-gnu-gcc src/scripts/asm_test.sh test/2026/functional
+```
+
+### 输出目录
+
+脚本会把结果输出到：
+
+```text
+src/test_output/<target-dir>/asm/
+```
+
+其中包括：
+
+- `asm/<case>.s`：编译器生成的 RISC-V 汇编
+- `exe/<case>`：交叉编译后的可执行文件
+- `out/<case>.out`：QEMU 运行的实际输出（附带返回码）
+- `err/<case>.err`：错误输出（如有）
+- `diff/<case>.diff`：和标准输出的差异（如有）
+
+### 编译器参数
+
+编译器通过 `--dump-asm` 参数输出 RISC-V 汇编：
+
+```bash
+src/build/compiler input.sy output.txt --dump-asm output.s
+```
+
+目标架构为 RV64IMAFDC，使用 lp64d ABI。运行时库位于 `src/asm/sylib.s`，提供 `getint`/`putint`/`getarray` 等 SysY 标准库函数。
+
+## 3. `ast_diff.sh`
 
 用于生成 Clang AST、SysY AST，并对规范格式化后的两份 AST 进行 diff，便于观察二者在语义结构上的差异。
 
@@ -85,7 +150,7 @@ src/test_output/<target-dir>/
 - `ast/<case>.ast`：编译器 `--dump-ast` 生成的 AST
 - `ast_diff/<case>.diff`：两份 AST 的差异
 
-## AST 对比说明
+## 3.1 AST 对比说明
 
 Clang AST 和 SysY AST 都是真实的抽象语法树，但二者的输出格式、字段组织方式和部分中间语义表示并不完全一致。为便于比较语义结构，`ast_diff.sh` 会在比较阶段进行规范格式处理，避免无意义的差异：
 
