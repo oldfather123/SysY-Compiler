@@ -5,6 +5,7 @@
 #include "frontend/SemanticAnalysis.h"
 #include "frontend/generated/SysYLexer.h"
 #include "frontend/generated/SysYParser.h"
+#include "asm/AsmEmitter.h"
 #include "codegen/CodeGen.h"
 #include "codegen/IRDumper.h"
 
@@ -23,11 +24,12 @@ struct Options {
     std::string outputPath;
     std::string astOutputPath;
     std::string irOutputPath;
+    std::string asmOutputPath;
 };
 
 void printUsage(const char *program) {
     std::cerr << "用法: " << program
-              << " <input.sy> [output.txt] [--dump-ast ast.txt] [--dump-ir ir.txt]\n";
+              << " <input.sy> [output.txt] [--dump-ast ast.txt] [--dump-ir ir.txt] [--dump-asm out.s]\n";
 }
 
 bool parseArgs(int argc, char *argv[], Options &options) {
@@ -58,6 +60,16 @@ bool parseArgs(int argc, char *argv[], Options &options) {
             }
             continue;
         }
+        if (arg == "--dump-asm") {
+            if (i + 1 >= argc) {
+                return false;
+            }
+            options.asmOutputPath = argv[++i];
+            if (options.asmOutputPath.empty() || options.asmOutputPath[0] == '-') {
+                return false;
+            }
+            continue;
+        }
 
         if (!arg.empty() && arg[0] == '-') {
             return false;
@@ -72,6 +84,14 @@ bool parseArgs(int argc, char *argv[], Options &options) {
     }
 
     return true;
+}
+
+bool shouldSkipInterpreter(const Options &options) {
+    if (options.asmOutputPath.empty() || !options.astOutputPath.empty() ||
+        !options.irOutputPath.empty()) {
+        return false;
+    }
+    return options.outputPath.empty() || options.outputPath == "/dev/null";
 }
 
 // 读取整个文件内容到字符串。
@@ -178,6 +198,23 @@ int main(int argc, char *argv[]) {
         codegen::CodeGen codegen(*ast);
         codegen::IRDumper dumper(irOutputFile);
         dumper.dump(*codegen.region());
+    }
+
+    // 7.5 按需输出 RISC-V 汇编
+    if (!options.asmOutputPath.empty()) {
+        std::ofstream asmOutputFile(options.asmOutputPath);
+        if (!asmOutputFile) {
+            std::cerr << "无法打开 ASM 输出文件: " << options.asmOutputPath
+                      << '\n';
+            return 1;
+        }
+        codegen::CodeGen codegen(*ast);
+        codegen::AsmEmitter emitter(asmOutputFile);
+        emitter.emit(*codegen.region());
+    }
+
+    if (shouldSkipInterpreter(options)) {
+        return 0;
     }
 
     // 8. 解释执行并输出文件

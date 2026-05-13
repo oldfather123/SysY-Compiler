@@ -59,6 +59,8 @@ private:
     Value emitLValueAddress(const ast::Expr &expr);
     Value emitCall(const ast::CallExpr &expr);
     Value emitImplicitCast(const ast::ImplicitCastExpr &expr);
+    Value emitBoolExpr(const ast::Expr &expr);
+    Value toBoolValue(Value value, ast::Type type);
 
     Symbol *resolveLocal(const std::string &name);
     const Symbol *resolveLocal(const std::string &name) const;
