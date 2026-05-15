@@ -24,6 +24,7 @@ target_compile_features(compiler PRIVATE cxx_std_17)
 
 set_target_properties(compiler PROPERTIES
     CXX_EXTENSIONS OFF
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/.."
 )
 
 target_compile_options(compiler PRIVATE

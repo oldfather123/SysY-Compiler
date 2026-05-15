@@ -2,6 +2,8 @@
 
 本文记录在 WSL Ubuntu 24.04 环境下配置编译器开发工具链、构建本项目和运行 SysY 测试用例的步骤，包括 C/C++ 编译器、LLVM/Clang、ANTLR v4 和 CMake。
 
+当前仓库面向 **RISC-V 赛道**：编译器生成 RISC-V 汇编，功能与性能测试链路也按 RISC-V 目标程序来组织。
+
 ## 1. 安装 WSL Ubuntu 24.04
 
 在 Windows 终端中执行：
@@ -94,7 +96,7 @@ cmake -S src -B src/build
 cmake --build src/build
 ```
 
-构建成功后，可执行文件为`src/build/compiler`。
+构建成功后，可执行文件会直接生成在仓库根目录，名称为 `compiler`。
 
 ## 6. 测试脚本
 

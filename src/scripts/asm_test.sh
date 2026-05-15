@@ -18,19 +18,22 @@ Usage:
   src/scripts/asm_test.sh test/<target-dir>
   src/scripts/asm_test.sh test/<target-dir>/<case>.sy
 
-Cross-compiles each .sy to RISC-V assembly, links with sylib, runs via QEMU,
-and compares output against expected .out files.
+Cross-compiles each .sy to RISC-V assembly, links with the official SysY
+runtime archive under src/lib, runs via QEMU, and compares output against
+expected .out files.
 
 Environment variables:
   RV_GCC          RISC-V GCC (default: riscv64-linux-gnu-gcc)
   RV_ARCH         march flag (default: rv64imafdc)
   RV_ABI          mabi flag (default: lp64d)
   QEMU            QEMU user binary (default: qemu-riscv64-static)
+  SYSY_LIB        SysY runtime static archive to link
+                  (default: src/lib/libsysy_riscv.a)
   QEMU_STACK_SIZE guest stack size passed to QEMU -s (default: 67108864)
   RUN_SY_TIMEOUT  timeout for each case (default: 25s)
 
 Prerequisites:
-  sudo apt-get install -y qemu-user-static
+  sudo apt-get install -y gcc-riscv64-linux-gnu qemu-user-static
 EOF
 }
 
@@ -58,8 +61,8 @@ readonly script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 readonly src_root=$(cd "$script_dir/.." && pwd)
 readonly repo_root=$(cd "$src_root/.." && pwd)
 readonly tests_root="$repo_root/test"
-readonly compiler="$src_root/build/compiler"
-readonly sylib_s="$src_root/asm/sylib.s"
+readonly compiler="$repo_root/compiler"
+readonly default_sysy_lib="$src_root/lib/libsysy_riscv.a"
 readonly case_timeout="${RUN_SY_TIMEOUT:-$DEFAULT_TIMEOUT}"
 
 target=
@@ -67,6 +70,7 @@ target_abs=
 suite_dir=
 suite_rel=
 out_root=
+sysy_lib=
 
 parse_args "$@"
 
@@ -95,9 +99,23 @@ ensure_compiler() {
     fi
 }
 
-ensure_sylib() {
-    if [[ ! -f "$sylib_s" ]]; then
-        die "sylib.s not found: $sylib_s"
+resolve_sysy_lib() {
+    if [[ -n "${SYSY_LIB:-}" ]]; then
+        sysy_lib=$SYSY_LIB
+        return
+    fi
+
+    if [[ -f "$default_sysy_lib" ]]; then
+        sysy_lib=$default_sysy_lib
+        return
+    fi
+
+}
+
+ensure_sysy_lib() {
+    resolve_sysy_lib
+    if [[ -z "$sysy_lib" || ! -f "$sysy_lib" ]]; then
+        die "SysY runtime archive not found: $default_sysy_lib"
     fi
 }
 
@@ -126,7 +144,7 @@ resolve_target() {
 
 ensure_dependencies
 ensure_compiler
-ensure_sylib
+ensure_sysy_lib
 resolve_target
 
 asm_dir="$out_root/asm"
@@ -174,8 +192,8 @@ run_case() {
         input_file=$in_file
     fi
 
-    # Step 1: Compile .sy -> .s via our compiler.
-    if ! timeout "$case_timeout" "$compiler" "$sy_file" /dev/null --dump-asm "$asm_file" \
+    # Step 1: Compile .sy -> .s via the standard competition CLI.
+    if ! timeout "$case_timeout" "$compiler" "$sy_file" -S -o "$asm_file" \
         < /dev/null 2>> "$err_file"; then
         echo "FAIL(compile) $sy_file"
         failed=$((failed + 1))
@@ -183,9 +201,9 @@ run_case() {
         return
     fi
 
-    # Step 2: Cross-compile .s + sylib.s -> executable.
+    # Step 2: Link .s with the official SysY runtime archive.
     if ! "$RV_GCC" -march="$RV_ARCH" -mabi="$RV_ABI" -static \
-        -o "$exe_file" "$asm_file" "$sylib_s" 2>> "$err_file"; then
+        -o "$exe_file" "$asm_file" "$sysy_lib" 2>> "$err_file"; then
         echo "FAIL(link) $sy_file"
         failed=$((failed + 1))
         exit_code=1
