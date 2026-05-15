@@ -60,11 +60,7 @@ readonly script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 readonly src_root=$(cd "$script_dir/.." && pwd)
 readonly repo_root=$(cd "$src_root/.." && pwd)
 readonly tests_root="$repo_root/test"
-<<<<<<< HEAD
-readonly compiler="$src_root/build/compiler"
-=======
 readonly compiler="$repo_root/compiler"
->>>>>>> bfba3aa6ee1bb3392cc33b1f19553b1007093821
 readonly case_timeout="${AST_DIFF_TIMEOUT:-$DEFAULT_TIMEOUT}"
 
 target=
