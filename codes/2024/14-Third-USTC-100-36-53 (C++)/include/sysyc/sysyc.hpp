@@ -1,7 +1,0 @@
-#pragma once
-enum class OptimizationLevel {
-    O0 = 0,
-    O1 = 1,
-    O2 = 2,
-    O3 = 3
-};

@@ -1,6 +1,0 @@
-int g_arr[2][2];
-
-int main() {
-    g_arr[0][1] = 5;
-    return g_arr[0][1];
-}

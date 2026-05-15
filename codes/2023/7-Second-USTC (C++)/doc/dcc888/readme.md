@@ -1,1 +1,0 @@
-[dcc888](https://homepages.dcc.ufmg.br/~fernando/classes/dcc888/ementa/)

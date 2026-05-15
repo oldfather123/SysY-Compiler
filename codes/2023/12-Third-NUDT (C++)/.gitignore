@@ -1,9 +1,0 @@
-# jetbrains
-.idea
-# vscode folder
-.vscode
-# cmake build
-build
-# test ins and outs
-test/func
-test/perf

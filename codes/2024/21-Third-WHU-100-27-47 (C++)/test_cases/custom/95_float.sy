@@ -1,9 +1,0 @@
-const float CONV1 = 233;
-const float CONV2 = 0xfff;
-const float EPS = 1e-6;
-
-int main(){
-  putfloat(-1);
-  putch(10);
-  return 0;
-}

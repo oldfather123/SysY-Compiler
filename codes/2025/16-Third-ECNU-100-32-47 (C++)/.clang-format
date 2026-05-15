@@ -1,5 +1,0 @@
-BasedOnStyle: LLVM
-CheckOptions:
-    cppcoreguidelines-owing-memory: error
-    bugprone-undefined-memory-manipulation: error
-    modernize-make-shared: suggestion

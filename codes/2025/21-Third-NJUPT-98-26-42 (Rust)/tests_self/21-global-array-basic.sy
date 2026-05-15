@@ -1,7 +1,0 @@
-int A[10];
-
-int main() {
-    int i = 0;
-    A[i] = 42;
-    return A[0];
-}

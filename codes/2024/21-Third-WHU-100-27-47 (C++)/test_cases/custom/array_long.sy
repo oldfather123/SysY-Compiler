@@ -1,5 +1,0 @@
-int main() {
-    int arr[100000];
-    arr[95000] = 32;
-    return arr[95000] + 16;
-}

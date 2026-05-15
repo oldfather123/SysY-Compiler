@@ -1,9 +1,0 @@
-int test_slice(int slice[]) {
-    slice[0] = 42;
-    return slice[0];
-}
-
-int main() {
-    int arr[2][2];
-    return test_slice(arr[1]);
-}
