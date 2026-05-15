@@ -25,10 +25,14 @@ struct Options {
     std::string astOutputPath;
     std::string irOutputPath;
     std::string asmOutputPath;
+    bool emitAssembly = false;
+    int optimizationLevel = 0;
 };
 
 void printUsage(const char *program) {
-    std::cerr << "用法: " << program
+    std::cerr << "用法:\n"
+              << "  " << program << " <input.sy> -S -o <output.s> [-O0|-O1]\n"
+              << "  " << program
               << " <input.sy> [output.txt] [--dump-ast ast.txt] [--dump-ir ir.txt] [--dump-asm out.s]\n";
 }
 
@@ -37,9 +41,31 @@ bool parseArgs(int argc, char *argv[], Options &options) {
         return false;
     }
 
-    options.inputPath = argv[1];
-    for (int i = 2; i < argc; ++i) {
+    std::string dashOPath;
+    for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
+        if (arg == "-S") {
+            options.emitAssembly = true;
+            continue;
+        }
+        if (arg == "-o") {
+            if (i + 1 >= argc) {
+                return false;
+            }
+            dashOPath = argv[++i];
+            if (dashOPath.empty() || dashOPath[0] == '-') {
+                return false;
+            }
+            continue;
+        }
+        if (arg == "-O0") {
+            options.optimizationLevel = 0;
+            continue;
+        }
+        if (arg == "-O1") {
+            options.optimizationLevel = 1;
+            continue;
+        }
         if (arg == "--dump-ast") {
             if (i + 1 >= argc) {
                 return false;
@@ -75,11 +101,38 @@ bool parseArgs(int argc, char *argv[], Options &options) {
             return false;
         }
 
+        if (options.inputPath.empty()) {
+            options.inputPath = arg;
+            continue;
+        }
+
         if (options.outputPath.empty()) {
             options.outputPath = arg;
             continue;
         }
 
+        return false;
+    }
+
+    if (options.inputPath.empty()) {
+        return false;
+    }
+
+    if (!dashOPath.empty()) {
+        if (options.emitAssembly || !options.asmOutputPath.empty()) {
+            if (!options.asmOutputPath.empty() && options.asmOutputPath != dashOPath) {
+                return false;
+            }
+            options.asmOutputPath = dashOPath;
+        } else {
+            if (!options.outputPath.empty() && options.outputPath != dashOPath) {
+                return false;
+            }
+            options.outputPath = dashOPath;
+        }
+    }
+
+    if (options.emitAssembly && options.asmOutputPath.empty()) {
         return false;
     }
 

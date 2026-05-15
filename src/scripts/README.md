@@ -78,6 +78,9 @@ QEMU=/path/to/qemu-riscv64 src/scripts/asm_test.sh test/2026/functional
 
 # 使用其他 RISC-V GCC
 RV_GCC=riscv64-unknown-linux-gnu-gcc src/scripts/asm_test.sh test/2026/functional
+
+# 指定其他 SysY 官方运行时静态库
+SYSY_LIB=src/lib/libsysy_riscv.a src/scripts/asm_test.sh test/2026/functional
 ```
 
 ### 输出目录
@@ -91,20 +94,20 @@ src/test_output/<target-dir>/asm/
 其中包括：
 
 - `asm/<case>.s`：编译器生成的 RISC-V 汇编
-- `exe/<case>`：交叉编译后的可执行文件
+- `exe/<case>`：交叉编译并链接官方 SysY 运行时库后的可执行文件
 - `out/<case>.out`：QEMU 运行的实际输出（附带返回码）
 - `err/<case>.err`：错误输出（如有）
 - `diff/<case>.diff`：和标准输出的差异（如有）
 
 ### 编译器参数
 
-编译器通过 `--dump-asm` 参数输出 RISC-V 汇编：
+比赛要求的标准命令行格式是：
 
 ```bash
-src/build/compiler input.sy output.txt --dump-asm output.s
+./compiler input.sy -S -o output.s
 ```
 
-目标架构为 RV64IMAFDC，使用 lp64d ABI。运行时库位于 `src/asm/sylib.s`，提供 `getint`/`putint`/`getarray` 等 SysY 标准库函数。
+兼容旧脚本和调试流程，编译器仍然支持 `--dump-asm` 这组历史参数。目标架构为 RV64IMAFDC，使用 lp64d ABI。默认链接 `src/lib/libsysy_riscv.a` 这份官方 SysY RISC-V 静态库；如有需要，也可通过 `SYSY_LIB` 环境变量改用同格式的其他库文件。
 
 ## 3. `ast_diff.sh`
 

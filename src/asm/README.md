@@ -17,7 +17,7 @@
 - `AsmEmitter.h` / `AsmEmitter.cpp`
   直接把 `CodeGen` 产出的 IR 翻译成 RISC-V 汇编文本。
 - `sylib.s`
-  SysY 运行时库的 RISC-V 汇编实现。
+  早期自定义的 SysY 运行时库 RISC-V 汇编实现，现已不再是默认测试链路所使用的运行时库。
 
 ## 2. 整体流程
 
@@ -29,7 +29,7 @@ SysY 源程序
   -> 语义检查
   -> CodeGen 生成 IR
   -> AsmEmitter 直接把 IR 打印成 .s
-  -> RISC-V GCC 只负责把 .s + sylib.s 汇编/链接成 ELF
+  -> RISC-V GCC 只负责把 .s 和官方 SysY 运行时库链接成 ELF
   -> QEMU 运行 ELF
   -> 收集程序输出和返回码
   -> 和标准答案比较
@@ -40,7 +40,7 @@ SysY 源程序
 这里要特别区分两件事：
 
 - **`.sy -> .s` 是我们自己的编译器做的**，核心逻辑就在 `CodeGen` 和 `AsmEmitter`。
-- `asm_test.sh` 里的 `riscv64-linux-gnu-gcc` **不是在帮我们生成目标汇编**，它只是把已经生成好的 `.s` 汇编并链接起来，这一步不属于“拿主机编译器代写后端”。
+- `asm_test.sh` 里的 `riscv64-linux-gnu-gcc` **不是在帮我们生成目标汇编**，它只是把已经生成好的 `.s` 和官方运行时静态库链接起来，这一步不属于“拿主机编译器代写后端”。
 
 ## 3. 这个“直接翻译，能跑就行”的版本怎么实现
 
@@ -163,7 +163,7 @@ src/scripts/asm_test.sh test/2026/functional/00_main.sy
 ### 第 1 步：调用我们的编译器生成 `.s`
 
 ```bash
-src/build/compiler input.sy /dev/null --dump-asm output.s
+./compiler input.sy -S -o output.s
 ```
 
 这里真正完成了：
@@ -174,16 +174,18 @@ src/build/compiler input.sy /dev/null --dump-asm output.s
 
 其中最后一步是这个目录里的后端实现完成的。
 
-### 第 2 步：把 `.s` 和 `sylib.s` 汇编并链接
+为了兼容仓库里原有的调试脚本，编译器仍然保留 `--dump-asm` 这组旧参数。
+
+### 第 2 步：把 `.s` 和官方运行时库链接
 
 脚本会调用：
 
 - `RV_GCC`，默认是 `riscv64-linux-gnu-gcc`
 
-把两份汇编：
+把下面两部分：
 
 - 编译器生成的 `case.s`
-- 运行时库 `src/asm/sylib.s`
+- 官方运行时静态库 `src/lib/libsysy_riscv.a`
 
 链接成一个 RISC-V 可执行文件。
 
@@ -374,7 +376,7 @@ int a[4] = {1, 2};
 - `AsmEmitter`
   修了函数标签唯一性、超大栈帧的 `sp` 调整、栈上传参与帧布局。
 - `sylib.s`
-  修了 `getarray/getfarray/putarray/putfarray` 里跨 `scanf/printf` 错用 caller-saved 寄存器的问题。
+  这是之前为了尽快打通功能测试写的自定义运行时实现。现在默认测试链路已经切到 `src/lib` 下的官方静态库，但这份汇编仍然保留，便于对照 ABI 和调试运行时行为。
 - `asm_test.sh`
   修了单测/目录模式、QEMU 栈大小、返回码附加格式。
 
@@ -397,7 +399,7 @@ int a[4] = {1, 2};
 负责把：
 
 - 你的 `case.s`
-- 运行时库 `sylib.s`
+- 官方运行时静态库 `src/lib/libsysy_riscv.a`
 
 变成：
 
@@ -457,7 +459,7 @@ stdout 的全部内容
 
 - `PASS`：输出和返回码都匹配
 - `FAIL(compile)`：编译器没成功生成 `.s`
-- `FAIL(link)`：`.s` 和 `sylib.s` 没成功链接
+- `FAIL(link)`：`.s` 和官方运行时库没成功链接
 - `FAIL(diff)`：程序跑出来了，但结果和标准答案不同
 - `TIMEOUT(...)`：超时
 
